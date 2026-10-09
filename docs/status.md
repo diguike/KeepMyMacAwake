@@ -1,44 +1,50 @@
 # 项目进度与下一会话入口
 
-更新：2026-10-09。用户已明确授权开始开发，并使用递归客身份创建同名公开仓库。
+更新：2026-10-10，0.2.0 本机体验版。项目已克隆到 Mac 本地。用户明确授权开发、安装、组件注册及验证后推送和合入 main。
 
-## 已完成
+## 已实现并安装
 
-- 原生 SwiftUI MenuBarExtra App：首次说明、定时、普通防休眠、合盖模式授权入口、保护设置、网络路径、恢复与卸载入口。
-- 独立 root helper：版本化 XPC 固定操作、连接级租约、20 秒失联截止、2 秒巡检、24 小时硬上限。
-- write-ahead 恢复记录：私有目录、无跟随链接读取、原子写入、fsync、失败保留与重试；启动先恢复，不续跑旧租约。
-- App/helper 双向代码签名要求；构建时将客户端身份固定到 helper 的签名元数据。
-- Swift Package、Mac 打包及公证脚本、Linux / macOS GitHub Actions、MIT 许可证和贡献说明。
-- Linux Swift 6.0.3：`swift test` 实际执行 24 项 XCTest，全部通过。
+- 原生菜单栏杯子图标、剩余时间、独立控制窗口；暖铜色场景卡片、倒计时圆环、固定启停按钮和独立设置页。正常打开显示控制窗口，登录启动静默留在菜单栏。
+- 日常、夜间、接电合盖、有网时四种快捷场景；具体规则可调整。
+- 30 分钟、1/2/8 小时、自定义 1–1440 分钟、直到手动停止；有限会话可续时 15 分钟，累计不超过 24 小时，已结束的会话不能续活。
+- 三种屏幕模式：自动熄屏、保持常亮、夜间柔光。夜间临时遮罩默认 94%，可调 80–98%，结束撤销；不是硬件背光调节。
+- 普通模式使用公开 IOPMAssertion；系统与显示断言分开，停止时释放，不改锁屏规则。
+- 接电、电量、网络路径和热压力保护；必需数据未知时停止。断网停止后不自动重启。
+- 验证后保存设置；重启只恢复偏好，不恢复活动租约。可设置登录启动和菜单栏倒计时。
+- v3 固定 XPC 协议；App/helper 独立监测网络、签名身份校验、连接所有权、20 秒失联保护、write-ahead 恢复记录与先恢复后移除组件。
+- SleepDisabled 在 pmset 未输出时读取 IOPMrootDomain 的明确 CFBoolean；不推断缺失为 false。
+- 自绘原生 App 图标，版本 0.2.0 / build 2。签名 release 已安装到 `/Applications/KeepMyMacAwake.app`。
 
-## 当前实际验证边界
+## 本机实际验证
 
-Linux 已验证纯逻辑及恢复文件读写，测试使用模拟后端，不会调用真实电源命令。服务器未直接执行 macOS SDK 编译、helper 注册、真实 pmset 修改、证书签名、公证或物理合盖测试。
+环境：Apple Silicon arm64，macOS 26.4.1，Xcode Swift 6.3.1。
 
-GitHub macOS CI 已执行 `swift test`（24 项通过）以及 `./scripts/build-macos.sh`；App/helper 编译、ad-hoc 打包与 `codesign --verify --deep --strict` 全部通过。对应源码提交 `5db0e14`，运行证据：[CI #37917896611](https://github.com/diguike/KeepMyMacAwake/actions/runs/37917896611)。CI 没有启动图形 App，没有注册 root 服务，没有改动真实电源设置；证书构建与双向 XPC 实际连接仍需本机验收。
+- `swift test`：42 项 XCTest 通过，32 项纯逻辑及恢复／偏好测试，10 项 Mac 原生测试。
+- 实际取得并读回本进程系统／显示断言，释放后不再持有；普通模式没有显示断言。
+- 无限时普通会话实际启停；注入时钟／网络的 App 生命周期测试仍使用真实 IOPMAssertion，验证到期释放、断网停止且不重启、到期不可续时、偏好恢复但不自动开会话。
+- 安装版原生 UI 已通过 cua 打开并操作：场景切换、自定义 1 分钟、真实倒计时自动结束、8 小时夜间启动／加 15 分钟／手动停止、退出重开保存偏好；固定启停按钮一直可见。
+- 夜间遮罩实际创建、结束撤销，测试读回没有残留可见窗口。多屏／Space／全屏物理组合仍需人工验收。
+- SleepDisabled 只读路径成功；本机 `ioreg` 明确为 false。没有执行全局 pmset 写入。
+- ad-hoc 和 Apple Development 证书构建、App/helper 严格签名与稳定 designated requirement 校验成功。安装版为 release；未公证。
+- 原先无窗口菜单栏 App 的自动化连接问题已通过原生控制窗口解决，完成可见 UI 验收。
+- `git diff --check` 无空白错误。
 
-所有真机行为仍待验收。没有正式发行物，不宣布支持某一机型，也不保证 helper 在 App 被删除／后台权限被管理员关闭时仍能运行。
+## 后台组件的实际状态与阻塞
 
-## 今晚在 Mac 上
+安装版已通过 SMAppService 注册，状态为 requiresApproval；系统设置中的 KeepMyMacAwake 后台活动开关可见但关闭。启用时 macOS 显示“使用触控 ID 或输入密码允许此操作”，需要本人认证。已取消该认证提示，不代填或绕过。root 服务尚未启动，`launchctl print` 确认服务不存在；没有活动合盖租约或全局设置改动。
 
-从 [mac-handoff.md](mac-handoff.md) 开始。先拉取、跑 `swift test` 和默认 ad-hoc 构建，验证 UI 与普通防闲置模式。若有证书，构建签名版，再测试授权、恢复和合盖。
+修正了首次 `.notFound` 时不注册的问题，以及注册返回 EPERM 但已进入 requiresApproval 时误报失败的问题。App 现在显示“打开系统授权”，清楚说明本人认证步骤。
 
-最高优先级：
+明天打开 App → 接电合盖 → 打开系统授权 → 通用／登录项与扩展 → 开启 KeepMyMacAwake 后台活动。批准后等待 App 显示“后台组件已连接”，再按 [合盖验收步骤](mac-handoff.md) 从开盖一分钟租约与恢复开始。
 
-1. 本机 UI 运行与证书签名检查；SMAppService 与 XPC 双向身份检查，非授权客户端不可调用。
-2. `pmset -g` 是否明确输出 SleepDisabled 0/1；缺失时当前后端会拒绝修改，不推断为正常。
-3. 无显示器接电合盖的真实持续运行；合盖、手动睡眠和拔插电源行为。
-4. App 强杀、helper 强杀、修改后重启，恢复记录与系统设置读回。
-5. 移除组件、升级与路径移动，先恢复后卸载。
+尚未执行真实 XPC 租约／pmset 写入、物理合盖、真实拔电或断网、强杀 helper、重启及系统级卸载矩阵。逻辑模拟和普通断言测试不能代替这些结果。没有宣布当前机型的合盖兼容性通过。
 
-## 未完成及依赖
+## 远端集成
 
-- Apple Silicon Air/Pro 和系统版本的物理验收；Intel 未承诺支持。
-- 没有服务器可用的 Developer ID 身份，正式签名、公证和 Gatekeeper 分发验收未执行。
-- 系统 SleepDisabled 开关不能识别其他工具写入相同值，需独占使用。
-- 首版只实现一个手动租约，多租约和任务绑定留后续。
-- 正式 App 图标、安装包与自动更新不属于当前已验证产物。
+当前开发分支 `feat/mac-scenarios`；本轮远端 CI 与 main 合并结果将在集成完成后补记。此前初版 24 项测试通过的 CI 不作为本轮证据。
 
-下一会话读 AGENTS.md、README.md、本文件和 Mac 交接清单，记录实际机型／系统／提交号以及验证结果，不重复初始化项目。
+## 后续验证边界
 
-公开仓库：https://github.com/diguike/KeepMyMacAwake ，默认分支 main，MIT，作者递归客（diguike）。源码和交接文档已推送。没有发布正式二进制或安装系统服务。
+无限时仍受保护条件、退出、失联和重启约束。网络可用路径不保证远端服务可达。全局开关不能识别其他工具中途写入相同值，避免多工具争用。Apple Development 仅用于本机体验；Developer ID、公证与物理验收完成前，不发布正式发行包。
+
+公开仓库：https://github.com/diguike/KeepMyMacAwake ，默认分支 main，MIT，作者递归客（diguike）。

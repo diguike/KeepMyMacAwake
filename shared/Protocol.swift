@@ -5,9 +5,9 @@ public enum ServiceIdentity {
     public static let app = "io.github.diguike.KeepMyMacAwake"
     public static let helper = "io.github.diguike.KeepMyMacAwake.helper"
     public static let plist = helper + ".plist"
-    public static let version = 1
+    public static let version = 3
 }
-public enum Operation: String, Codable { case status, acquire, renew, release, recover }
+public enum Operation: String, Codable { case status, acquire, renew, extend, release, recover }
 public struct HelperRequest: Codable {
     public let version: Int
     public let operation: Operation

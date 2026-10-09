@@ -1,6 +1,7 @@
 import Foundation
 import IOKit.ps
 import Darwin
+import Network
 import AwakeCore
 
 public enum MacMonitor {
@@ -37,6 +38,22 @@ public enum MacMonitor {
         case .critical: thermal = .critical
         @unknown default: thermal = .unknown
         }
-        return PowerSample(onAC: onAC, batteryPercent: percent, thermal: thermal)
+        return PowerSample(onAC: onAC, batteryPercent: percent, thermal: thermal, networkAvailable: NetworkAvailability.shared.available)
+    }
+}
+
+/// Both App and helper observe paths independently; the helper never trusts UI telemetry.
+private final class NetworkAvailability: @unchecked Sendable {
+    static let shared = NetworkAvailability()
+    private let monitor = NWPathMonitor()
+    private let lock = NSLock()
+    private var value: Bool?
+    var available: Bool? { lock.lock(); defer { lock.unlock() }; return value }
+    private init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard let self else { return }
+            self.lock.lock(); self.value = path.status == .satisfied; self.lock.unlock()
+        }
+        monitor.start(queue: DispatchQueue(label: "io.github.diguike.keepmymacawake.path"))
     }
 }

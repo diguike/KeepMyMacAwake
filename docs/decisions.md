@@ -33,3 +33,23 @@
 | D018 | 已实现 | 无自动更新；升级先恢复并移除旧组件 | 原路径重启恢复机制需先通过真机生命周期测试 |
 
 公开仓库按用户授权创建为 diguike/KeepMyMacAwake；源码公开不代表正式二进制发行。
+
+## 2026-10-10：Mac 场景版与协议 v2
+
+- 根据用户新要求，增加 duration = 0 的无限时会话；有限时会话保持 1–1440 分钟范围。取消无限时会话的 24 小时截止，但仍执行连接所有权、20 秒失联、保护停止与崩溃恢复，不通过重新获取租约制造恢复空窗。
+- App/helper 协议升级到 v2，增加网络条件和监控字段，拒绝混用 v1 组件。两端独立运行 NWPathMonitor；helper 不信任 UI 报告的网络状态。未知网络在启用网络条件时停止。
+- 本机 macOS 26.4.1 的 pmset -g 不显示未设置的 SleepDisabled；缺失时改为读取 IOPMrootDomain 的明确 CFBoolean 属性，拒绝缺失或类型错误。Apple [pmset 源码](https://github.com/apple-oss-distributions/PowerManagement/blob/main/pmset/pmset.m)只在配置有该键时打印；[内核源码](https://github.com/apple-oss-distributions/xnu/blob/main/iokit/Kernel/IOPMrootDomain.cpp)发布与处理此布尔属性。本机只读验证通过；实际写入与合盖仍待验收。
+- 夜间使用临时 AppKit 窗口遮罩，未引入私有亮度 API 或持久化亮度改动。明确展示“画面变暗”，不冒充硬件背光调节。通过公开 [显示防闲置断言](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridledisplaysleep)控制屏幕常亮，结束时释放。
+- 本机证书构建发现 codesign -R 把裸字符串当作文件路径，校验改用以等号开头的显式 requirement 字符串；保持双向签名校验。
+- App 本地保护每秒检查，helper XPC 心跳仍每 5 秒；计时器加入 common RunLoop 模式，减少交互影响。
+
+## 2026-10-10：0.2.0 安装与主分支交付
+
+用户已明确授权本机安装、所需系统授权、测试后推送并合入 main。沿用系统 SMAppService 安装流程，不通过手工 sudo 常驻进程或放宽签名要求替代。
+
+- 增加原生控制窗口，保留菜单栏主入口与 LSUIElement，首次启动／Finder 重新打开可发现；关闭窗口不结束会话。
+- 原生 UI 使用暖铜色杯子和计时环，自绘 ICNS，不增加第三方 UI 依赖。控制按钮固定在滚动区外，所有场景都能随时停止。
+- UserDefaults 仅保存已校验的使用偏好；测试注入独立 defaults，运行会话不持久化。
+- 协议 v3 新增固定 extend 操作。延长必须属于同一连接、旧会话仍有效，且总有限时长不超过 24 小时；不通过停止再开始造成合盖恢复空窗。
+- 原生测试可注入时钟和监控样本，对真实 IOPMAssertion 验证自动到期和网络保护后的释放；保护样本注入不能计作拔电／断网的物理验证。
+- 不声明自动化可操作物理盖子。签名、授权、设置读回、开盖持续运行和物理合盖分别记录。

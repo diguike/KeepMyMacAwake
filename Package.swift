@@ -12,7 +12,8 @@ products += [.executable(name: "KeepMyMacAwake", targets: ["AwakeApp"]),
 targets += [
     .target(name: "AwakeShared", dependencies: ["AwakeCore"], path: "shared"),
     .executableTarget(name: "AwakeApp", dependencies: ["AwakeCore", "AwakeShared"], path: "app"),
-    .executableTarget(name: "AwakeHelper", dependencies: ["AwakeCore", "AwakeShared"], path: "helper")
+    .executableTarget(name: "AwakeHelper", dependencies: ["AwakeCore", "AwakeShared"], path: "helper"),
+    .testTarget(name: "AwakeMacTests", dependencies: ["AwakeApp", "AwakeShared"], path: "mac-tests")
 ]
 #endif
 let package = Package(name: "KeepMyMacAwake", platforms: [.macOS(.v14)],

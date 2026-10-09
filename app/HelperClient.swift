@@ -2,7 +2,7 @@ import Foundation
 import AwakeCore
 import AwakeShared
 
-private final class ReplyGate {
+private final class ReplyGate: @unchecked Sendable {
     private let lock = NSLock()
     private var finished = false
     func once(_ block: () -> Void) {

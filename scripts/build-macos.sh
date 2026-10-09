@@ -13,9 +13,11 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 swift build -c "$configuration" --product KeepMyMacAwake
 bin="$(swift build -c "$configuration" --show-bin-path)"
-mkdir -p "$app/Contents/MacOS" "$app/Contents/Library/HelperTools" "$app/Contents/Library/LaunchDaemons"
+mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$app/Contents/Library/HelperTools" "$app/Contents/Library/LaunchDaemons"
 cp "$bin/KeepMyMacAwake" "$app/Contents/MacOS/KeepMyMacAwake"
 cp packaging/info.plist "$app/Contents/Info.plist"
+swift scripts/generate-icon.swift "$work/Awake.iconset"
+iconutil -c icns "$work/Awake.iconset" -o "$app/Contents/Resources/Awake.icns"
 cp packaging/io.github.diguike.KeepMyMacAwake.helper.plist "$app/Contents/Library/LaunchDaemons/"
 sign_options=(--force --sign "$identity" --options runtime --timestamp=none)
 if [[ "$identity" != - && "$configuration" == release ]]; then
@@ -46,7 +48,7 @@ codesign "${sign_options[@]}" --identifier io.github.diguike.KeepMyMacAwake.help
 codesign "${sign_options[@]}" "$app"
 codesign --verify --deep --strict --verbose=2 "$app"
 if [[ "$identity" != - ]]; then
-  codesign --verify --strict -R "$client_requirement" "$app"
+  codesign --verify --strict -R "=$client_requirement" "$app"
 fi
 printf 'Built %s\n' "$app"
 if [[ "$identity" == - ]]; then
