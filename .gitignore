@@ -1,0 +1,16 @@
+.DS_Store
+.build/
+build/
+dist/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.env
+.env.*
+!.env.example
+.claude.local.md
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.log
