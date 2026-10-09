@@ -21,9 +21,11 @@ public enum Signing {
     /// Immutable metadata in the helper's signed __TEXT,__info_plist section.
     public static func allowedClientRequirement() throws -> String {
         var code: SecCode?
+        var staticCode: SecStaticCode?
         var information: CFDictionary?
         guard SecCodeCopySelf([], &code) == errSecSuccess, let code = code,
-              SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &information) == errSecSuccess,
+              SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode = staticCode,
+              SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &information) == errSecSuccess,
               let dict = information as? [String: Any],
               let plist = dict[kSecCodeInfoPList as String] as? [String: Any],
               let requirement = plist["AwakeClientRequirement"] as? String, !requirement.isEmpty else {

@@ -41,4 +41,12 @@
 
 仓库 README 是作者声明，不能替代代码审阅或本项目的真机验证。不要照抄 README 中关于安全、SIP、兼容范围或“唯一办法”的绝对表述。
 
-当前只参考资料，没有复制第三方代码、图标或文案。若后续复用，先检查具体文件与对应提交的许可证，并保留要求的版权声明；本项目许可证尚未决定。
+当前只参考资料，没有复制第三方代码、图标或文案。若后续复用，先检查具体文件与对应提交的许可证，并保留要求的版权声明；本项目采用 MIT 许可证。
+
+## 实现时核对的官方接口
+
+- [NSXPCConnection.setCodeSigningRequirement](https://developer.apple.com/documentation/foundation/nsxpcconnection/setcodesigningrequirement(_:))：macOS 13 起可在 resume 前强制 peer 代码签名要求。
+- [SMAppService.daemon](https://developer.apple.com/documentation/servicemanagement/smappservice/daemon(plistname:))：内嵌 LaunchDaemon plist 位置。
+- [更新 helper 布局](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos)：BundleProgram 与 App 内相对路径。
+
+这些接口文档用于实现依据，实际注册、签名与服务生命周期仍需 Mac 验证。
