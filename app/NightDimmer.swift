@@ -11,7 +11,8 @@ import AppKit
         if observer == nil {
             observer = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                 object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.rebuild() }
+                guard let dimmer = self else { return }
+                Task { @MainActor in dimmer.rebuild() }
             }
         }
     }
