@@ -41,7 +41,11 @@
 
 ## 远端集成
 
-当前开发分支 `feat/mac-scenarios`；本轮远端 CI 与 main 合并结果将在集成完成后补记。此前初版 24 项测试通过的 CI 不作为本轮证据。
+代码提交 `0e4466e` 的 push 与 PR 两轮 CI 全部通过：[PR CI #37972944776](https://github.com/diguike/KeepMyMacAwake/actions/runs/37972944776)、[push CI #37972940156](https://github.com/diguike/KeepMyMacAwake/actions/runs/37972940156)。Linux 32 项逻辑测试；macOS 42 项测试（无跳过）与 ad-hoc 打包成功。
+
+CI 首轮发现旧 Swift 对屏幕变更回调弱引用捕获的并发检查差异，已改为先取得强引用再交给 MainActor；本机重跑 42 项测试与签名 release 构建通过，并更新本机安装。安装版主程序与最终 dist 的 SHA-256 一致，严格签名校验成功。
+
+[PR #1](https://github.com/diguike/KeepMyMacAwake/pull/1) 已于 2026-10-10 02:25（Asia/Singapore）合入 main，合并提交 `669bd71`。本地 main 已快进同步。旧 CI 不作为本轮改动证据。
 
 ## 后续验证边界
 
