@@ -4,24 +4,28 @@ public enum ThermalLevel: String, Codable { case nominal, fair, serious, critica
 public struct PowerSample: Codable, Equatable {
     public var onAC: Bool?
     public var batteryPercent: Int?
+    public var networkAvailable: Bool?
     public var thermal: ThermalLevel
-    public init(onAC: Bool?, batteryPercent: Int?, thermal: ThermalLevel) {
-        self.onAC = onAC; self.batteryPercent = batteryPercent; self.thermal = thermal
+    public init(onAC: Bool?, batteryPercent: Int?, thermal: ThermalLevel, networkAvailable: Bool? = nil) {
+        self.networkAvailable = networkAvailable; self.onAC = onAC; self.batteryPercent = batteryPercent; self.thermal = thermal
     }
 }
 public struct SafetyPolicy: Codable, Equatable {
     public var requireAC: Bool
+    public var requireNetwork: Bool
     public var minimumBattery: Int
-    public init(requireAC: Bool = true, minimumBattery: Int = 20) {
-        self.requireAC = requireAC; self.minimumBattery = minimumBattery
+    public init(requireAC: Bool = true, minimumBattery: Int = 20, requireNetwork: Bool = false) {
+        self.requireNetwork = requireNetwork; self.requireAC = requireAC; self.minimumBattery = minimumBattery
     }
     public var isValid: Bool { (10...80).contains(minimumBattery) }
 }
 public enum StopReason: String, Codable {
+    case networkDisconnected
     case manual, expired, disconnected, heartbeatLost, powerDisconnected, lowBattery
     case thermalCritical, thermalSerious, telemetryUnknown, clockChanged, backendChanged, recovered
     public var message: String {
         switch self {
+        case .networkDisconnected: return "网络已断开，请联网后重新开启"
         case .manual: return "已手动停止"
         case .expired: return "设定时间已到"
         case .disconnected: return "应用连接已断开"
@@ -50,6 +54,10 @@ public struct SafetyEvaluator {
                                   now: TimeInterval) -> StopReason? {
         guard let onAC = sample.onAC, sample.thermal != .unknown else { return .telemetryUnknown }
         if policy.requireAC && !onAC { return .powerDisconnected }
+        if policy.requireNetwork {
+            guard let available = sample.networkAvailable else { return .telemetryUnknown }
+            if !available { return .networkDisconnected }
+        }
         if !onAC {
             guard let battery = sample.batteryPercent, (0...100).contains(battery) else { return .telemetryUnknown }
             if battery <= policy.minimumBattery { return .lowBattery }

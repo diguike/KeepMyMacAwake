@@ -16,7 +16,7 @@ AGENTS.md 是主说明；CLAUDE.md 仅提供入口，避免双份规则漂移。
 
 ## 环境与验证
 
-- 当前在 Linux 服务器，可编写后续源码，但不得声称这里已验证 macOS 构建或合盖行为。
+- 已于 2026-10-10 移至 Mac 本机开发。Linux 只验证纯逻辑；Mac 的编译、原生断言、签名构建与物理合盖必须分别记录证据。
 - Swift Package：`swift test` 验证纯逻辑；Mac 用 `./scripts/build-macos.sh` 编译和打包。结果要按实际执行记录。
 - 当前实现 SwiftUI + AppKit + IOKit + SMAppService 独立特权 helper；macOS 14+。合盖后端仍需验证。
 - 每项变更记录实际运行的检查、未运行的原因和需要 Mac 验证的部分。

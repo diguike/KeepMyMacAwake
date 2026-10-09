@@ -33,3 +33,12 @@
 | D018 | 已实现 | 无自动更新；升级先恢复并移除旧组件 | 原路径重启恢复机制需先通过真机生命周期测试 |
 
 公开仓库按用户授权创建为 diguike/KeepMyMacAwake；源码公开不代表正式二进制发行。
+
+## 2026-10-10：Mac 场景版与协议 v2
+
+- 根据用户新要求，增加 duration = 0 的无限时会话；有限时会话保持 1–1440 分钟范围。取消无限时会话的 24 小时截止，但仍执行连接所有权、20 秒失联、保护停止与崩溃恢复，不通过重新获取租约制造恢复空窗。
+- App/helper 协议升级到 v2，增加网络条件和监控字段，拒绝混用 v1 组件。两端独立运行 NWPathMonitor；helper 不信任 UI 报告的网络状态。未知网络在启用网络条件时停止。
+- 本机 macOS 26.4.1 的 pmset -g 不显示未设置的 SleepDisabled；缺失时改为读取 IOPMrootDomain 的明确 CFBoolean 属性，拒绝缺失或类型错误。Apple [pmset 源码](https://github.com/apple-oss-distributions/PowerManagement/blob/main/pmset/pmset.m)只在配置有该键时打印；[内核源码](https://github.com/apple-oss-distributions/xnu/blob/main/iokit/Kernel/IOPMrootDomain.cpp)发布与处理此布尔属性。本机只读验证通过；实际写入与合盖仍待验收。
+- 夜间使用临时 AppKit 窗口遮罩，未引入私有亮度 API 或持久化亮度改动。明确展示“画面变暗”，不冒充硬件背光调节。通过公开 [显示防闲置断言](https://developer.apple.com/documentation/iokit/kiopmassertiontypepreventuseridledisplaysleep)控制屏幕常亮，结束时释放。
+- 本机证书构建发现 codesign -R 把裸字符串当作文件路径，校验改用以等号开头的显式 requirement 字符串；保持双向签名校验。
+- App 本地保护每秒检查，helper XPC 心跳仍每 5 秒；计时器加入 common RunLoop 模式，减少交互影响。

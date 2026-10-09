@@ -29,7 +29,7 @@ SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' ./scripts/build-macos.sh
 
 开始合盖之前先验证**开盖状态下**的恢复链路：
 
-1. 记录 `pmset -g`；如果缺少明确的 SleepDisabled 0/1，当前后端会拒绝运行。保留读回样本，下一步针对该系统研究可验证的读取方式。
+1. 记录 `pmset -g`；如果缺少明确的 SleepDisabled 0/1，后端会读取 IOPMrootDomain 的明确布尔属性；该属性也未知时拒绝运行。可用 ioreg -r -n IOPMrootDomain -d 1 只读核对，不将缺失当成 false。
 2. 开启 1 分钟合盖模式，确认 SleepDisabled 1；手动停止并确认恢复 0。
 3. 再开启，退出 App 后确认恢复 0；检查恢复文件按预期清理。
 4. 强杀 UI，目标 20 秒失联阈值后至多一个巡检周期开始恢复；另加 pmset 调用时间。读取真实日志，不把模拟测试当证据。

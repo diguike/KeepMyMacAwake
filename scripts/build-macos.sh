@@ -46,7 +46,7 @@ codesign "${sign_options[@]}" --identifier io.github.diguike.KeepMyMacAwake.help
 codesign "${sign_options[@]}" "$app"
 codesign --verify --deep --strict --verbose=2 "$app"
 if [[ "$identity" != - ]]; then
-  codesign --verify --strict -R "$client_requirement" "$app"
+  codesign --verify --strict -R "=$client_requirement" "$app"
 fi
 printf 'Built %s\n' "$app"
 if [[ "$identity" == - ]]; then

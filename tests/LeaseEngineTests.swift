@@ -111,7 +111,7 @@ final class LeaseEngineTests: XCTestCase {
     }
     func testUnknownTelemetryStopsAndInvalidRequestsDoNotWrite() throws {
         let (e, b, _) = try setup()
-        for duration in [Double.nan, Double.infinity, 0, 59, 86401] {
+        for duration in [Double.nan, Double.infinity, -1, 59, 86401] {
             XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: duration, policy: SafetyPolicy(), sample: ac, now: clock(0)))
         }
         XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: 60, policy: SafetyPolicy(minimumBattery: 0), sample: ac, now: clock(0)))
@@ -174,6 +174,44 @@ final class LeaseEngineTests: XCTestCase {
         b.readFails = false; b.onWrite = nil
         e.tick(sample: ac, now: clock(2))
         XCTAssertFalse(b.disabled); XCTAssertNil(s.record)
+    }
+
+    func testUnlimitedSessionKeepsWatchdogAndManualRecovery() throws {
+        let (e, b, s) = try setup(); let owner = UUID()
+        let id = try e.acquire(owner: owner, duration: 0, policy: SafetyPolicy(), sample: ac, now: clock(0))
+        for t in stride(from: 10.0, through: 90000, by: 10) {
+            try e.renew(id: id, owner: owner, sample: ac, now: clock(t))
+        }
+        XCTAssertTrue(b.disabled); XCTAssertNil(e.status(now: clock(90000)).remainingSeconds)
+        e.tick(sample: ac, now: clock(90020))
+        XCTAssertFalse(b.disabled); XCTAssertNil(s.record)
+        XCTAssertEqual(e.status(now: clock(90020)).stopReason, .heartbeatLost)
+    }
+    func testNetworkLossRestoresAndDoesNotAutoResume() throws {
+        let (e, b, s) = try setup()
+        let connected = PowerSample(onAC: false, batteryPercent: 70, thermal: .nominal, networkAvailable: true)
+        let offline = PowerSample(onAC: false, batteryPercent: 70, thermal: .nominal, networkAvailable: false)
+        let policy = SafetyPolicy(requireAC: false, requireNetwork: true)
+        _ = try e.acquire(owner: UUID(), duration: 0, policy: policy, sample: connected, now: clock(0))
+        e.tick(sample: offline, now: clock(5))
+        XCTAssertFalse(b.disabled); XCTAssertNil(s.record)
+        XCTAssertEqual(e.status(now: clock(5)).stopReason, .networkDisconnected)
+        e.tick(sample: connected, now: clock(6))
+        XCTAssertEqual(e.status(now: clock(6)).phase, .off)
+    }
+    func testNetworkRequiredRejectsUnknownAndOfflineBeforeWriting() throws {
+        let (e, b, _) = try setup()
+        let policy = SafetyPolicy(requireNetwork: true)
+        XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: 60, policy: policy, sample: ac, now: clock(0)))
+        var offline = ac; offline.networkAvailable = false
+        XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: 60, policy: policy, sample: offline, now: clock(0)))
+        XCTAssertTrue(b.writes.isEmpty)
+    }
+    func testUnlimitedStillStopsOnBatteryProtection() throws {
+        let (e, b, _) = try setup()
+        _ = try e.acquire(owner: UUID(), duration: 0, policy: SafetyPolicy(requireAC: false), sample: ac, now: clock(0))
+        e.tick(sample: PowerSample(onAC: false, batteryPercent: 20, thermal: .nominal), now: clock(5))
+        XCTAssertFalse(b.disabled); XCTAssertEqual(e.status(now: clock(5)).stopReason, .lowBattery)
     }
 
 }

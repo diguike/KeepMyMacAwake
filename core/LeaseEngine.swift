@@ -53,7 +53,7 @@ public final class LeaseEngine {
     }
     public func acquire(owner: UUID, duration: Double, policy: SafetyPolicy,
                         sample: PowerSample, now: ClockSample) throws -> UUID {
-        guard duration.isFinite, (60...86400).contains(duration), policy.isValid else { throw AwakeError.invalidRequest }
+        guard duration.isFinite, (duration == 0 || (60...86400).contains(duration)), policy.isValid else { throw AwakeError.invalidRequest }
         guard !recoveryPending else { throw AwakeError.recoveryRequired }
         guard lease == nil else { throw AwakeError.busy }
         var safety = SafetyEvaluator()
@@ -101,7 +101,7 @@ public final class LeaseEngine {
         let elapsed = now.continuous - current.start.continuous
         var reason: StopReason?
         if elapsed < 0 || abs(now.wall.timeIntervalSince(current.start.wall) - elapsed) > 60 { reason = .clockChanged }
-        else if elapsed >= current.duration { reason = .expired }
+        else if current.duration > 0 && elapsed >= current.duration { reason = .expired }
         else if now.continuous - current.heartbeat >= Self.heartbeatTimeout { reason = .heartbeatLost }
         else { reason = current.safety.evaluate(sample, policy: current.policy, now: now.continuous) }
         lease = current
@@ -118,7 +118,7 @@ public final class LeaseEngine {
         if recoveryPending { return SessionStatus(phase: .recoveryRequired, stopReason: lastReason, error: lastError) }
         if let current = lease {
             return SessionStatus(phase: .active, leaseID: current.id,
-                                 remainingSeconds: max(0, current.duration - (now.continuous - current.start.continuous)))
+                                 remainingSeconds: current.duration == 0 ? nil : max(0, current.duration - (now.continuous - current.start.continuous)))
         }
         return SessionStatus(stopReason: lastReason, error: lastError)
     }

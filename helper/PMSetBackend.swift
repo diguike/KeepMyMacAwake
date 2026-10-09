@@ -1,4 +1,5 @@
 import Foundation
+import AwakeShared
 import AwakeCore
 
 final class PMSetBackend: SleepBackend {
@@ -11,7 +12,9 @@ final class PMSetBackend: SleepBackend {
             return String(fields[1])
         }
         guard values.count == 1, let value = values.first, value == "0" || value == "1" else {
-            throw AwakeError.backend("无法可靠读取 SleepDisabled，未修改设置")
+            // Recent macOS omits false from pmset output. Read the live kernel flag,
+            // accepting only CFBoolean rather than inferring false from absence.
+            return try SleepState.readDisabled()
         }
         return value == "1"
     }
