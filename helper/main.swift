@@ -26,6 +26,9 @@ final class HelperService: NSObject, HelperProtocol {
                 case .renew:
                     guard let id = input.leaseID else { throw AwakeError.invalidRequest }
                     try engine.renew(id: id, owner: owner, sample: sample, now: now)
+                case .extend:
+                    guard let id = input.leaseID, let seconds = input.duration else { throw AwakeError.invalidRequest }
+                    try engine.extend(id: id, owner: owner, seconds: seconds, sample: sample, now: now)
                 case .release:
                     guard let id = input.leaseID else { throw AwakeError.invalidRequest }
                     try engine.release(id: id, owner: owner)

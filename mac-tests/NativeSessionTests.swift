@@ -3,6 +3,7 @@ import IOKit.pwr_mgt
 import AppKit
 @testable import AwakeApp
 import AwakeShared
+import AwakeCore
 
 final class NativeSessionTests: XCTestCase {
     private func ownAssertions() throws -> [[String: Any]] {
@@ -34,7 +35,7 @@ final class NativeSessionTests: XCTestCase {
         XCTAssertEqual(created.first?[kIOPMAssertionTypeKey as String] as? String, "PreventUserIdleSystemSleep")
     }
     @MainActor func testUnlimitedAppSessionCanStopWithoutHelper() async throws {
-        let model = AppModel()
+        let model = AppModel(defaults: nil, sample: { PowerSample(onAC: true, batteryPercent: 80, thermal: .nominal) })
         model.onboarded = true; model.requireAC = false; model.durationMinutes = -1
         await model.start()
         XCTAssertTrue(model.active, model.message); XCTAssertTrue(model.unlimitedSession)
@@ -44,7 +45,7 @@ final class NativeSessionTests: XCTestCase {
         XCTAssertTrue(stopped, model.message); XCTAssertFalse(model.hasSession)
     }
     @MainActor func testScenesConfigureExpectedConditions() {
-        let model = AppModel()
+        let model = AppModel(defaults: nil)
         model.chooseScene("夜间")
         XCTAssertTrue(model.nightMode); XCTAssertFalse(model.lidMode); XCTAssertEqual(model.durationMinutes, 480)
         model.chooseScene("接电合盖")
@@ -66,4 +67,45 @@ final class NativeSessionTests: XCTestCase {
         dimmer.stop()
         XCTAssertTrue(overlays.allSatisfy { !$0.isVisible })
     }
+    @MainActor func testFiniteAppSessionExpiresAndReleasesRealAssertions() async throws {
+        var time: Double = 0
+        let model = AppModel(defaults: nil, sample: { PowerSample(onAC: true, batteryPercent: 80, thermal: .nominal) },
+            clock: { ClockSample(wall: Date(timeIntervalSince1970: 1000 + time), continuous: time) })
+        model.onboarded = true; model.durationMinutes = 0; model.customMinutes = 1
+        await model.start(); XCTAssertTrue(model.active, model.message)
+        time = 61; await model.refresh()
+        XCTAssertFalse(model.hasSession); XCTAssertTrue(model.message.contains("设定时间已到"))
+        XCTAssertTrue(try ownAssertions().filter { ($0[kIOPMAssertionNameKey as String] as? String)?.hasPrefix("KeepMyMacAwake") == true }.isEmpty)
+    }
+    @MainActor func testNetworkProtectionEndsRealSessionWithoutAutoRestart() async throws {
+        var available = true
+        let model = AppModel(defaults: nil, sample: { PowerSample(onAC: false, batteryPercent: 80, thermal: .nominal, networkAvailable: available) })
+        model.onboarded = true; model.requireAC = false; model.requireNetwork = true; model.durationMinutes = -1
+        await model.start(); XCTAssertTrue(model.active, model.message)
+        available = false; await model.refresh(); XCTAssertFalse(model.hasSession)
+        available = true; await model.refresh(); XCTAssertFalse(model.hasSession)
+    }
+    @MainActor func testExtensionCannotReviveExpiredOrdinarySession() async throws {
+        var time: Double = 0
+        let model = AppModel(defaults: nil, sample: { PowerSample(onAC: true, batteryPercent: 80, thermal: .nominal) },
+            clock: { ClockSample(wall: Date(timeIntervalSince1970: 1000 + time), continuous: time) })
+        model.onboarded = true; model.durationMinutes = 0; model.customMinutes = 1
+        await model.start(); XCTAssertTrue(model.active, model.message)
+        time = 61; await model.extendSession()
+        XCTAssertFalse(model.hasSession); XCTAssertTrue(model.message.contains("设定时间已到"))
+        XCTAssertTrue(try ownAssertions().filter { ($0[kIOPMAssertionNameKey as String] as? String)?.hasPrefix("KeepMyMacAwake") == true }.isEmpty)
+    }
+    @MainActor func testSavedPreferencesRestoreButNeverResumeSession() throws {
+        let suite = "io.github.diguike.KeepMyMacAwake.tests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let original = AppModel(defaults: defaults)
+        original.chooseScene("有网时"); original.durationMinutes = -1; original.screenMode = "保持常亮"
+        original.minimumBattery = 35; original.acknowledge()
+        let next = AppModel(defaults: defaults)
+        XCTAssertEqual(next.scene, "有网时"); XCTAssertEqual(next.minimumBattery, 35)
+        XCTAssertEqual(next.screenMode, "保持常亮"); XCTAssertTrue(next.requireNetwork)
+        XCTAssertTrue(next.onboarded); XCTAssertFalse(next.hasSession)
+    }
+
 }

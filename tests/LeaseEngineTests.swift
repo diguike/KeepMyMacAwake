@@ -214,4 +214,21 @@ final class LeaseEngineTests: XCTestCase {
         XCTAssertFalse(b.disabled); XCTAssertEqual(e.status(now: clock(5)).stopReason, .lowBattery)
     }
 
+    func testExtendPreservesDeadlineAndOwnership() throws {
+        let (e, b, _) = try setup(); let owner = UUID()
+        let id = try e.acquire(owner: owner, duration: 60, policy: SafetyPolicy(), sample: ac, now: clock(0))
+        XCTAssertThrowsError(try e.extend(id: id, owner: UUID(), seconds: 900, sample: ac, now: clock(5)))
+        try e.extend(id: id, owner: owner, seconds: 900, sample: ac, now: clock(5))
+        XCTAssertEqual(e.status(now: clock(5)).remainingSeconds, 955)
+        for t in stride(from: 10.0, through: 950, by: 10) { try e.renew(id: id, owner: owner, sample: ac, now: clock(t)) }
+        e.tick(sample: ac, now: clock(960)); XCTAssertFalse(b.disabled)
+        XCTAssertEqual(e.status(now: clock(960)).stopReason, .expired)
+        XCTAssertThrowsError(try e.extend(id: id, owner: owner, seconds: 900, sample: ac, now: clock(961)))
+    }
+    func testExtendCannotExceedFiniteSessionLimit() throws {
+        let (e, _, _) = try setup(); let owner = UUID()
+        let id = try e.acquire(owner: owner, duration: 86400, policy: SafetyPolicy(), sample: ac, now: clock(0))
+        XCTAssertThrowsError(try e.extend(id: id, owner: owner, seconds: 900, sample: ac, now: clock(5)))
+    }
+
 }

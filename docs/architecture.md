@@ -79,4 +79,7 @@ XPC 在 resume 前设置 NSXPCConnection 的签名要求。构建时将 App 的�
 launchd KeepAlive 不能覆盖用户删除 App、后台权限撤销或服务被管理员卸载。系统全局开关也不能区分其他工具中途写入相同值。当前提供退出、恢复与先恢复后注销入口，升级需先注销旧组件；不是已验证的自动升级方案。
 
 
-2026-10-10 协议为 v2。PowerSample 新增可选 networkAvailable，SafetyPolicy 新增 requireNetwork；仅启用网络条件时未知网络触发保护停止。App/helper 各自观察网络路径，不将可用路径等同于互联网或远端服务可达。普通模式按秒检查保护，helper 每 5 秒续心跳、每 2 秒独立检查。断网后不自动重新取得租约。
+2026-10-10 协议为 v3。PowerSample 新增可选 networkAvailable，SafetyPolicy 新增 requireNetwork；仅启用网络条件时未知网络触发保护停止。App/helper 各自观察网络路径，不将可用路径等同于互联网或远端服务可达。普通模式按秒检查保护，helper 每 5 秒续心跳、每 2 秒独立检查。断网后不自动重新取得租约。
+
+
+AppModel.shared 在菜单栏和 AppKit 控制窗口之间共享会话。偏好数据 AwakePreferences 与运行状态分离，加载前校验字段范围。v3 extend 操作延长同一有限时租约（累计上限 24 小时），不会改变连接所有权、保护策略或原始时钟基线；过期会话不能复活。

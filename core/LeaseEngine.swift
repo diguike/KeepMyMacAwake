@@ -21,7 +21,7 @@ public final class LeaseEngine {
         let id: UUID
         let owner: UUID
         let start: ClockSample
-        let duration: Double
+        var duration: Double
         let policy: SafetyPolicy
         var heartbeat: Double
         var safety = SafetyEvaluator()
@@ -83,6 +83,13 @@ public final class LeaseEngine {
         tick(sample: sample, now: now)
         guard var current = lease, current.id == id, current.owner == owner else { throw AwakeError.unauthorizedLease }
         current.heartbeat = now.continuous; lease = current
+    }
+    public func extend(id: UUID, owner: UUID, seconds: Double, sample: PowerSample, now: ClockSample) throws {
+        guard seconds.isFinite, (60...86400).contains(seconds) else { throw AwakeError.invalidRequest }
+        tick(sample: sample, now: now)
+        guard var current = lease, current.id == id, current.owner == owner else { throw AwakeError.unauthorizedLease }
+        guard current.duration > 0, current.duration + seconds <= 86400 else { throw AwakeError.invalidRequest }
+        current.duration += seconds; current.heartbeat = now.continuous; lease = current
     }
     public func release(id: UUID, owner: UUID) throws {
         guard let current = lease, current.id == id, current.owner == owner else { throw AwakeError.unauthorizedLease }
