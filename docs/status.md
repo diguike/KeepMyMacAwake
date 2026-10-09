@@ -45,7 +45,7 @@
 
 CI 首轮发现旧 Swift 对屏幕变更回调弱引用捕获的并发检查差异，已改为先取得强引用再交给 MainActor；本机重跑 42 项测试与签名 release 构建通过，并更新本机安装。安装版主程序与最终 dist 的 SHA-256 一致，严格签名校验成功。
 
-[PR #1](https://github.com/diguike/KeepMyMacAwake/pull/1) 已于 2026-10-10 02:25（Asia/Singapore）合入 main，合并提交 `669bd71`。本地 main 已快进同步。旧 CI 不作为本轮改动证据。
+[PR #1](https://github.com/diguike/KeepMyMacAwake/pull/1) 已于 2026-10-10 02:25（Asia/Singapore）合入 main，合并提交 `669bd71`。本地 main 已快进同步。合并后的 [main CI #37973145079](https://github.com/diguike/KeepMyMacAwake/actions/runs/37973145079) 也全部通过。后续仅提交交付记录，无代码变化。旧 CI 不作为本轮改动证据。
 
 ## 后续验证边界
 
