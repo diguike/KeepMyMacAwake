@@ -13,7 +13,9 @@
 
 ## 当前实际验证边界
 
-Linux 已验证纯逻辑及恢复文件读写，测试使用模拟后端，不会调用真实电源命令。服务器未执行 macOS SDK 编译、helper 注册、真实 pmset 修改、签名、公证或物理合盖测试。GitHub macOS 构建结果将另行记录。
+Linux 已验证纯逻辑及恢复文件读写，测试使用模拟后端，不会调用真实电源命令。服务器未直接执行 macOS SDK 编译、helper 注册、真实 pmset 修改、证书签名、公证或物理合盖测试。
+
+GitHub macOS CI 已执行 `swift test`（24 项通过）以及 `./scripts/build-macos.sh`；App/helper 编译、ad-hoc 打包与 `codesign --verify --deep --strict` 全部通过。对应源码提交 `5db0e14`，运行证据：[CI #37917896611](https://github.com/diguike/KeepMyMacAwake/actions/runs/37917896611)。CI 没有启动图形 App，没有注册 root 服务，没有改动真实电源设置；证书构建与双向 XPC 实际连接仍需本机验收。
 
 所有真机行为仍待验收。没有正式发行物，不宣布支持某一机型，也不保证 helper 在 App 被删除／后台权限被管理员关闭时仍能运行。
 
@@ -23,7 +25,7 @@ Linux 已验证纯逻辑及恢复文件读写，测试使用模拟后端，不�
 
 最高优先级：
 
-1. 编译和签名检查；SMAppService 与 XPC 双向身份检查，非授权客户端不可调用。
+1. 本机 UI 运行与证书签名检查；SMAppService 与 XPC 双向身份检查，非授权客户端不可调用。
 2. `pmset -g` 是否明确输出 SleepDisabled 0/1；缺失时当前后端会拒绝修改，不推断为正常。
 3. 无显示器接电合盖的真实持续运行；合盖、手动睡眠和拔插电源行为。
 4. App 强杀、helper 强杀、修改后重启，恢复记录与系统设置读回。
@@ -38,3 +40,5 @@ Linux 已验证纯逻辑及恢复文件读写，测试使用模拟后端，不�
 - 正式 App 图标、安装包与自动更新不属于当前已验证产物。
 
 下一会话读 AGENTS.md、README.md、本文件和 Mac 交接清单，记录实际机型／系统／提交号以及验证结果，不重复初始化项目。
+
+公开仓库：https://github.com/diguike/KeepMyMacAwake ，默认分支 main，MIT，作者递归客（diguike）。源码和交接文档已推送。没有发布正式二进制或安装系统服务。
