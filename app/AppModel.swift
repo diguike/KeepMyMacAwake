@@ -38,13 +38,14 @@ import AwakeShared
         loginEnabled = SMAppService.mainApp.status == .enabled
         updateAuthorization()
         monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                self?.network = path.status == .satisfied ? "网络路径可用（不保证远端服务）" : "网络路径不可用"
-            }
+            guard let model = self else { return }
+            let status = path.status == .satisfied ? "网络路径可用（不保证远端服务）" : "网络路径不可用"
+            Task { @MainActor in model.network = status }
         }
         monitor.start(queue: DispatchQueue(label: "io.github.diguike.keepmymacawake.network"))
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.refresh() }
+            guard let model = self else { return }
+            Task { @MainActor in await model.refresh() }
         }
         Task { await refresh() }
     }

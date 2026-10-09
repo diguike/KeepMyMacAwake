@@ -9,7 +9,7 @@
 - write-ahead 恢复记录：私有目录、无跟随链接读取、原子写入、fsync、失败保留与重试；启动先恢复，不续跑旧租约。
 - App/helper 双向代码签名要求；构建时将客户端身份固定到 helper 的签名元数据。
 - Swift Package、Mac 打包及公证脚本、Linux / macOS GitHub Actions、MIT 许可证和贡献说明。
-- Linux Swift 6.0.3：`swift test` 实际执行 21 项 XCTest，全部通过。
+- Linux Swift 6.0.3：`swift test` 实际执行 24 项 XCTest，全部通过。
 
 ## 当前实际验证边界
 

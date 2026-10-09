@@ -150,4 +150,30 @@ final class LeaseEngineTests: XCTestCase {
         XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: 60, policy: SafetyPolicy(), sample: ac, now: clock(0)))
         XCTAssertTrue(b.writes.isEmpty); XCTAssertNil(s.record)
     }
+    func testTokenIsBoundToConnection() throws {
+        let (e, _, _) = try setup(); let owner = UUID()
+        let id = try e.acquire(owner: owner, duration: 60, policy: SafetyPolicy(), sample: ac, now: clock(0))
+        XCTAssertEqual(e.leaseID(for: owner), id)
+        XCTAssertNil(e.leaseID(for: UUID()))
+        XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: 60, policy: SafetyPolicy(), sample: ac, now: clock(1)))
+    }
+    func testUnsupportedJournalCannotChangePower() throws {
+        let (e, b, s) = try setup()
+        s.record = try JSONDecoder().decode(RecoveryRecord.self, from: Data("{\"version\":2,\"baselineDisabled\":false,\"created\":0}".utf8))
+        b.disabled = true
+        XCTAssertThrowsError(try e.recover())
+        XCTAssertTrue(b.disabled); XCTAssertTrue(b.writes.isEmpty); XCTAssertNotNil(s.record)
+        XCTAssertEqual(e.status(now: clock(0)).phase, .recoveryRequired)
+    }
+    func testFailureAfterMutationKeepsRecoveryEvidence() throws {
+        let (e, b, s) = try setup()
+        b.onWrite = { value in if value { b.readFails = true } }
+        XCTAssertThrowsError(try e.acquire(owner: UUID(), duration: 60, policy: SafetyPolicy(), sample: ac, now: clock(0)))
+        XCTAssertTrue(b.disabled); XCTAssertNotNil(s.record)
+        XCTAssertEqual(e.status(now: clock(0)).phase, .recoveryRequired)
+        b.readFails = false; b.onWrite = nil
+        e.tick(sample: ac, now: clock(2))
+        XCTAssertFalse(b.disabled); XCTAssertNil(s.record)
+    }
+
 }
