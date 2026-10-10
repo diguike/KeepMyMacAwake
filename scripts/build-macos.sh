@@ -8,13 +8,23 @@ fi
 identity="${SIGN_IDENTITY:--}"
 configuration="${CONFIGURATION:-debug}"
 case "$configuration" in debug|release) ;; *) echo 'CONFIGURATION must be debug or release' >&2; exit 1;; esac
+read -r -a architectures <<< "${ARCHITECTURES:-$(uname -m)}"
+for architecture in "${architectures[@]}"; do
+  case "$architecture" in arm64|x86_64) ;; *) echo 'ARCHITECTURES must contain arm64 or x86_64' >&2; exit 1;; esac
+done
 app="$PWD/dist/KeepMyMacAwake.app"
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
-swift build -c "$configuration" --product KeepMyMacAwake
-bin="$(swift build -c "$configuration" --show-bin-path)"
+trap 'rm -r "$work"' EXIT
+app_slices=()
+for architecture in "${architectures[@]}"; do
+  build_args=(-c "$configuration" --triple "$architecture-apple-macosx14.0")
+  swift build "${build_args[@]}" --product KeepMyMacAwake
+  bin="$(swift build "${build_args[@]}" --show-bin-path)"
+  cp "$bin/KeepMyMacAwake" "$work/app-$architecture"
+  app_slices+=("$work/app-$architecture")
+done
 mkdir -p "$app/Contents/Resources" "$app/Contents/MacOS" "$app/Contents/Library/HelperTools" "$app/Contents/Library/LaunchDaemons"
-cp "$bin/KeepMyMacAwake" "$app/Contents/MacOS/KeepMyMacAwake"
+xcrun lipo -create "${app_slices[@]}" -output "$app/Contents/MacOS/KeepMyMacAwake"
 cp packaging/info.plist "$app/Contents/Info.plist"
 swift scripts/generate-icon.swift "$work/Awake.iconset"
 iconutil -c icns "$work/Awake.iconset" -o "$app/Contents/Resources/Awake.icns"
@@ -41,16 +51,25 @@ with open(sys.argv[1], 'wb') as f:
     plistlib.dump({'CFBundleIdentifier':'io.github.diguike.KeepMyMacAwake.helper',
                   'CFBundleVersion':'1','AwakeClientRequirement':sys.argv[2]}, f)
 PY
-swift build -c "$configuration" --product KeepMyMacAwakeHelper \
-  -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker "$work/helper-info.plist"
-cp "$bin/KeepMyMacAwakeHelper" "$app/Contents/Library/HelperTools/KeepMyMacAwakeHelper"
+helper_slices=()
+for architecture in "${architectures[@]}"; do
+  build_args=(-c "$configuration" --triple "$architecture-apple-macosx14.0")
+  swift build "${build_args[@]}" --product KeepMyMacAwakeHelper \
+    -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist -Xlinker "$work/helper-info.plist"
+  bin="$(swift build "${build_args[@]}" --show-bin-path)"
+  cp "$bin/KeepMyMacAwakeHelper" "$work/helper-$architecture"
+  helper_slices+=("$work/helper-$architecture")
+done
+xcrun lipo -create "${helper_slices[@]}" -output "$app/Contents/Library/HelperTools/KeepMyMacAwakeHelper"
 codesign "${sign_options[@]}" --identifier io.github.diguike.KeepMyMacAwake.helper "$app/Contents/Library/HelperTools/KeepMyMacAwakeHelper"
 codesign "${sign_options[@]}" "$app"
-codesign --verify --deep --strict --verbose=2 "$app"
+codesign --verify --deep --strict --all-architectures --verbose=2 "$app"
 if [[ "$identity" != - ]]; then
   codesign --verify --strict -R "=$client_requirement" "$app"
 fi
 printf 'Built %s\n' "$app"
+xcrun lipo -archs "$app/Contents/MacOS/KeepMyMacAwake"
+xcrun lipo -archs "$app/Contents/Library/HelperTools/KeepMyMacAwakeHelper"
 if [[ "$identity" == - ]]; then
   echo 'Ad-hoc preview: idle-sleep prevention only. Helper registration requires a certificate-signed build.'
 fi

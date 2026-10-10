@@ -6,6 +6,12 @@
 
 当前是 **0.2.0 本机体验版**：重新设计原生菜单栏面板和控制窗口，加入场景、永久保活、夜间柔光、续时和设置保存。2026-10-10 在 Mac 本机通过 42 项测试（含 10 项原生验证），完成真实一分钟计时、启停与签名安装。后台组件注册后等待 macOS 本人认证，物理合盖仍待验收；具体证据和远端 CI 见 [实际进度](docs/status.md)。本机使用 Apple Development 签名，尚未公证。
 
+## 下载体验包
+
+[下载 0.2.0（GitHub Release）](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.2.0)。macOS 14+，DMG 和 ZIP 均包含 Apple Silicon / Intel 双架构。DMG 打开后把 App 拖到 Applications；ZIP 解压后放入“应用程序”。包内含中文安装说明。
+
+这是 Apple Development 签名的 **未公证体验版**，首次下载可能需要系统设置中的单 App “仍要打开”；具体见 Release 和 [Apple 说明](https://support.apple.com/zh-cn/102445)。合盖功能需要在目标 Mac 单独批准后台组件，物理合盖兼容性尚待验收。
+
 ## 功能
 
 - 普通防闲置休眠，允许屏幕关闭和正常锁屏。

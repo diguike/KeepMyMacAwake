@@ -16,9 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift test
-      - run: ./scripts/build-macos.sh
+      - run: ARCHITECTURES='arm64 x86_64' CONFIGURATION=release ./scripts/build-macos.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: keepmymacawake-unsigned-preview
+          name: keepmymacawake-universal-unsigned-preview
           path: dist/KeepMyMacAwake.app
           retention-days: 7

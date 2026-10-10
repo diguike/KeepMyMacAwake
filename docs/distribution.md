@@ -18,3 +18,19 @@ NOTARY_PROFILE='your-existing-profile' ./scripts/notarize-macos.sh
 脚本构建 release、提交公证、staple 并验证 Gatekeeper，输出 zip。脚本不会创建 GitHub Release 或上传安装包。签名主体、公证和正式发布仍需要开发者身份及真机验收。当前没有执行公证。
 
 CI 的 artifact 只是构建证据，不作为已签名发行物。通过网页解压下载的 artifact 可能丢失权限；本地开发优先从源码构建。
+
+## 0.2.0 跨机器体验包
+
+用户于 2026-10-10 明确要求将当前版本打包到 GitHub Release，供另一台 Mac 下载试用。该授权覆盖体验包发布；仍不把未公证、未完成物理合盖验收的包标为正式稳定发行物。
+
+```sh
+SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' ./scripts/release-macos.sh
+```
+
+脚本对 App 和 helper 分别编译 arm64 / x86_64、使用 lipo 合并，再签名。输出 `dist/releases/KeepMyMacAwake-0.2.0-macOS-universal.dmg`、ZIP 和 SHA256SUMS.txt。DMG 内有 App、Applications 快捷入口、中文安装说明和 MIT 许可证；ZIP 包含 App、说明及许可证。压缩后分别挂载／解压校验完整签名，核对两个可执行文件均有双架构。构建时可用 `ARCHITECTURES='arm64 x86_64' CONFIGURATION=release ./scripts/build-macos.sh` 单独生成通用 App。
+
+当前机器只有 Apple Development 身份，没有 Developer ID Application，因而此次发布为 GitHub **Pre-release**，标签 `v0.2.0`。不创建新证书、不提交公证，构建产物作为同一仓库的 Release 附件提供。
+
+跨机器首次下载可能触发 Gatekeeper，使用 Apple 的单 App “仍要打开”流程；不提供关闭全局保护或删除隔离属性的命令。公司管理策略可能禁止该例外。helper 仍要求在目标机单独批准后台活动。
+
+依据：[Apple 通用二进制说明](https://developer.apple.com/documentation/apple-silicon/building-a-universal-macos-binary)、[公证证书要求](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)、[首次安全打开 App](https://support.apple.com/zh-cn/102445)。
