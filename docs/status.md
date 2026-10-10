@@ -51,4 +51,15 @@ CI 首轮发现旧 Swift 对屏幕变更回调弱引用捕获的并发检查差�
 
 无限时仍受保护条件、退出、失联和重启约束。网络可用路径不保证远端服务可达。全局开关不能识别其他工具中途写入相同值，避免多工具争用。Apple Development 仅用于本机体验；Developer ID、公证与物理验收完成前，不发布正式发行包。
 
+## 0.2.0 Release 下载交付
+
+用户要求在另一台 Mac 下载试用，已于 2026-10-10 发布 [v0.2.0 Pre-release](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.2.0)，源提交 `2845ada`。同仓库 Release 附件为通用 DMG（约 2.1 MB）、ZIP（约 1.7 MB）和 SHA256SUMS.txt；包内附中文安装说明与 MIT 许可证。
+
+- App 和 helper 均含 arm64／x86_64，最低部署版本均为 macOS 14；双架构严格签名校验通过。DMG 校验、只读挂载签名检查、ZIP 解包后签名检查均成功。
+- x86_64 的 42 项 XCTest 在本机 Rosetta 下全部通过。SwiftPM 原生 arm64 测试驱动无法加载 x86_64 测试包，改用 `arch -x86_64 xctest` 执行，未计作物理 Intel 机验证。
+- 新增双架构 release 构建后，[CI #38051967579](https://github.com/diguike/KeepMyMacAwake/actions/runs/38051967579) 的 Linux 32 项测试、macOS 42 项测试及通用 ad-hoc 构建全部通过。
+- 只有 Apple Development 签名、没有 Developer ID，`spctl` 默认评估实际拒绝；本包未公证。首次下载的单 App 例外和目标机后台本人认证步骤写入 Release 与包内说明，不绕过公司管理限制。
+
+正式稳定发行的边界保持不变；本轮用户明确授权的是跨电脑体验包发布。
+
 公开仓库：https://github.com/diguike/KeepMyMacAwake ，默认分支 main，MIT，作者递归客（diguike）。
