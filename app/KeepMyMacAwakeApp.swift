@@ -247,7 +247,7 @@ struct AwakePanel: View {
             Text(model.message).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             Link("开源项目与使用说明 ↗", destination: URL(string: "https://github.com/diguike/KeepMyMacAwake")!)
                 .font(.callout)
-            Text("KeepMyMacAwake 0.2.0 · 递归客\n原生 macOS · MIT 开源").font(.caption).foregroundStyle(.secondary).lineSpacing(3)
+            Text("KeepMyMacAwake \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "开发版") · 递归客\n原生 macOS · MIT 开源").font(.caption).foregroundStyle(.secondary).lineSpacing(3)
         }
     }
     private var footer: some View {
