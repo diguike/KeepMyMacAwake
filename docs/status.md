@@ -76,5 +76,10 @@ CI 首轮发现旧 Swift 对屏幕变更回调弱引用捕获的并发检查差�
 - 0.2.1 / build 3 通用 Apple Development 签名 release 构建通过；DMG 校验和只读挂载、ZIP 解包、App/helper 双架构与严格签名检查均成功。设置页版本改从 Bundle 读取。
 - 已通过旧 App 的“停止并移除组件”确认恢复和注销后升级 `/Applications/KeepMyMacAwake.app`；安装版严格签名通过，主程序 SHA-256 与构建产物一致。
 - 本轮开始时旧 helper 已批准并运行。升级后通过 App 重新注册，已有系统批准保留，新 helper 可连接。本轮未开启实际合盖租约，恢复后 SleepDisabled 只读明确为 No。
+- 安装版 UI 实测：空闲编辑自定义分钟两分多钟后，辅助功能树保持不变、输入焦点仍在原字段，按钮可用。随后实际开启普通一分钟会话；UI 自动显示“设定时间已到”，本进程保活断言释放。设置页显示 0.2.1 与“后台组件已连接”，验收后留在待机。
+
+代码提交 `0024ed7` 的 [push CI #38103734888](https://github.com/diguike/KeepMyMacAwake/actions/runs/38103734888) 与 [PR CI #38103767618](https://github.com/diguike/KeepMyMacAwake/actions/runs/38103767618) 全部通过。[PR #2](https://github.com/diguike/KeepMyMacAwake/pull/2) 已合入 main，合并提交 `9e6de89`；[main CI #38103842400](https://github.com/diguike/KeepMyMacAwake/actions/runs/38103842400) 同样通过。远端 Linux 32 项测试，macOS 49 项测试与双架构构建成功。
+
+[v0.2.1 Pre-release](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.2.1) 已于 2026-10-11 10:04（Asia/Singapore）公开，tag 指向 `9e6de89`。DMG、ZIP 与 SHA256SUMS.txt 上传后回下载校验通过；安装版与下载包使用同次构建。仍是 Apple Development 签名、未公证的体验包。
 
 上述回归验证了发现的触发路径；用户具体看到的刷新形态尚未补充。物理合盖与多屏／Space／全屏切换矩阵仍待人工验收，不将模拟时钟、XPC 回复或屏幕通知计作物理验证。
