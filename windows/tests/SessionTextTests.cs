@@ -14,5 +14,5 @@ public class SessionTextTests
     [Theory] [InlineData(30, "不足 1 分钟")] [InlineData(45 * 60, "45 分钟")] [InlineData(8 * 3600, "8 小时")] [InlineData(90 * 60 + 59, "1 小时 30 分钟")]
     public void DurationText(double seconds, string expected) => Assert.Equal(expected, SessionText.Duration(seconds));
     [Fact] public void LastResultKeepsTimesDurationAndReason() =>
-        Assert.Equal("上次 23:10–07:10 · 运行 8 小时 · 设定时间已到", SessionText.LastResult(At(13, 23, 10), At(14, 7, 10), "设定时间已到"));
+        Assert.Equal("上次 2026/10/13 23:10–2026/10/14 07:10 · 运行 8 小时 · 设定时间已到", SessionText.LastResult(At(13, 23, 10), At(14, 7, 10), "设定时间已到"));
 }

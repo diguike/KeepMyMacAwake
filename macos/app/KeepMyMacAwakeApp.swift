@@ -142,13 +142,13 @@ struct AwakePanel: View {
                     Button { model.chooseScene(name) } label: {
                         VStack(spacing: 7) {
                             Image(systemName: icon).font(.system(size: 18, weight: .medium))
-                            Text(name).font(.system(size: 11, weight: .medium))
+                            Text(ScenePreset.named(name)?.displayName ?? name).font(.system(size: 11, weight: .medium))
                         }.frame(maxWidth: .infinity).padding(.vertical, 12)
                             .foregroundStyle(model.scene == name ? amber : Color.secondary)
                             .background(model.scene == name ? amber.opacity(0.10) : Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.scene == name ? amber.opacity(0.35) : .clear, lineWidth: 1))
                     }.buttonStyle(.plain).disabled(model.hasSession || model.busy)
-                        .accessibilityLabel("选择\(name)场景").accessibilityAddTraits(model.scene == name ? .isSelected : [])
+                        .accessibilityLabel("选择\(ScenePreset.named(name)?.displayName ?? name)场景").accessibilityAddTraits(model.scene == name ? .isSelected : [])
                         .help(sceneHelp(name))
                 }
             }
@@ -226,7 +226,10 @@ struct AwakePanel: View {
                 Label("日常使用", systemImage: "slider.horizontal.3").font(.headline)
                 Toggle("菜单栏显示剩余时间", isOn: $model.showCountdown).toggleStyle(.switch)
                 Toggle("登录时启动", isOn: Binding(get: { model.loginEnabled }, set: { model.setLogin($0) })).toggleStyle(.switch)
+                Toggle("保活结束时通知", isOn: Binding(get: { model.notifyOnEnd }, set: { enabled in Task { await model.setNotifications(enabled) } })).toggleStyle(.switch)
+                Text(model.notificationMessage).font(.caption).foregroundStyle(.secondary)
                 Text("记住场景和设置；登录或重启后不会自动保活。").font(.caption).foregroundStyle(.secondary)
+                Text("仅在本机保存最近一次已结束会话的时间和原因，不保存任务内容。").font(.caption).foregroundStyle(.secondary)
             }.padding(16).card()
             VStack(alignment: .leading, spacing: 14) {
                 Label("保护条件", systemImage: "shield.lefthalf.filled").font(.headline)
@@ -245,8 +248,8 @@ struct AwakePanel: View {
                 if model.helperNeedsApproval { Text("首次启用需要本人用触控 ID 或登录密码批准后台活动。").font(.caption).foregroundStyle(.secondary) }
                 Divider()
                 HStack {
-                    Button("恢复设置") { Task { await model.recover() } }.disabled(model.busy || model.active)
-                    Button("停止并移除组件") { Task { await model.removeHelper() } }.disabled(model.busy)
+                    Button("恢复设置") { Task { await model.recover() } }.disabled(model.busy || model.active || !model.helperBuildEnabled)
+                    Button("停止并移除组件") { Task { await model.removeHelper() } }.disabled(model.busy || !model.helperBuildEnabled)
                 }
                 Text("卸载 App 前先移除组件。恢复只撤销本应用的改动，不保证机器立即入睡。")
                     .font(.caption).foregroundStyle(.secondary)

@@ -17,6 +17,27 @@ internal sealed class PreferencesStore
     }
     private readonly JsonSerializerOptions json = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
     private string FilePath => Path.Combine(directory, "preferences.json");
+    private string ResultPath => Path.Combine(directory, "last-result.json");
+    public (SessionResult? Result, string? Notice) LoadResult()
+    {
+        try
+        {
+            if (!File.Exists(ResultPath)) return (null, null);
+            if (new FileInfo(ResultPath).Length > 65536) throw new InvalidDataException("结果文件过大");
+            var result = JsonSerializer.Deserialize<SessionResult>(File.ReadAllText(ResultPath), json);
+            if (result is null || !result.IsValid) throw new InvalidDataException("结果字段无效");
+            return (result, null);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
+        { return (null, "无法读取上次结果：" + error.Message); }
+    }
+    public void SaveResult(SessionResult result)
+    {
+        if (!result.IsValid) throw new ArgumentException("结果无效");
+        WriteAtomic(ResultPath, result);
+    }
+    public bool TrayHintShown => File.Exists(Path.Combine(directory, "tray-hint-shown"));
+    public void RememberTrayHint() { Directory.CreateDirectory(directory); File.WriteAllText(Path.Combine(directory, "tray-hint-shown"), "1"); }
     public (Preferences Preferences, bool HasOnboarded, string? Notice) Load()
     {
         try
@@ -33,13 +54,17 @@ internal sealed class PreferencesStore
     public void Save(Preferences preferences, bool hasOnboarded)
     {
         if (!preferences.IsValid) throw new ArgumentException("设置无效");
+        WriteAtomic(FilePath, new SavedSettings(preferences, hasOnboarded));
+    }
+    private void WriteAtomic<T>(string destination, T value)
+    {
         Directory.CreateDirectory(directory);
         string temporary = Path.Combine(directory, ".pending-" + Guid.NewGuid().ToString("N"));
         try
         {
             using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            { JsonSerializer.Serialize(file, new SavedSettings(preferences, hasOnboarded), json); file.Flush(true); }
-            File.Move(temporary, FilePath, true);
+            { JsonSerializer.Serialize(file, value, json); file.Flush(true); }
+            File.Move(temporary, destination, true);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }

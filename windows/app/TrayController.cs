@@ -28,11 +28,23 @@ internal sealed class TrayController : IDisposable
         menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add("停止并退出", null, (_, _) => exit());
         tray = new Forms.NotifyIcon { Icon = idleIcon, Text = "KeepMyMacAwake", ContextMenuStrip = menu, Visible = true };
         tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) reveal(); };
+        tray.BalloonTipClicked += (_, _) => reveal();
+        model.SessionEnded += SessionEnded;
         model.PropertyChanged += Changed; Update();
         model.ToggleCommand.CanExecuteChanged += CommandChanged;
         model.ExtendCommand.CanExecuteChanged += CommandChanged;
     }
     private void CommandChanged(object? sender, EventArgs e) => Update();
+    public void ShowCloseHint()
+    {
+        if (model.ConsumeTrayHint()) ShowBalloon("仍在系统托盘", "关闭窗口后仍会保活。点击托盘杯子或此提示打开；退出请用“停止并退出”。");
+    }
+    private void SessionEnded(Awake.Core.SessionResult result) => ShowBalloon("保活已结束", result.Text);
+    private void ShowBalloon(string title, string body)
+    {
+        try { tray.ShowBalloonTip(5000, title, body, Forms.ToolTipIcon.Info); }
+        catch (System.ComponentModel.Win32Exception) { /* A disabled system notification never blocks stopping. */ }
+    }
     private void Changed(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MainViewModel.TrayText) or nameof(MainViewModel.IsActive) or nameof(MainViewModel.IsFiniteActive) or nameof(MainViewModel.NeedsRecovery) or nameof(MainViewModel.HasOnboarded)) Update();
@@ -65,6 +77,7 @@ internal sealed class TrayController : IDisposable
     public void Dispose()
     {
         model.PropertyChanged -= Changed;
+        model.SessionEnded -= SessionEnded;
         model.ToggleCommand.CanExecuteChanged -= CommandChanged; model.ExtendCommand.CanExecuteChanged -= CommandChanged;
         tray.Visible = false; tray.Dispose(); menu.Dispose(); idleIcon.Dispose(); activeIcon.Dispose();
     }

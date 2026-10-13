@@ -23,6 +23,7 @@ public sealed record Preferences
     public bool LidMode { get; init; }
     public double DimAmount { get; init; } = .94;
     public bool ShowCountdown { get; init; } = true;
+    public bool NotifyOnEnd { get; init; }
     public bool IsValid => Enum.IsDefined(Scene) && DurationMinutes is >= -1 and <= 1440 && CustomMinutes is >= 1 and <= 1440 && MinimumBattery is >= 10 and <= 80 && Enum.IsDefined(ScreenMode) && double.IsFinite(DimAmount) && DimAmount is >= .8 and <= .98;
     public static Preferences ForScene(Scene scene) => scene switch
     {
@@ -32,6 +33,13 @@ public sealed record Preferences
         Scene.Network => new() { Scene = scene, DurationMinutes = 120, LidMode = true, RequireAC = false, RequireNetwork = true },
         _ => throw new ArgumentException("未知场景")
     };
+}
+public sealed record SessionResult(DateTimeOffset Start, DateTimeOffset End, string Reason)
+{
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsValid => End >= Start && !string.IsNullOrEmpty(Reason) && Reason.Length <= 300;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Text => SessionText.LastResult(Start.LocalDateTime, End.LocalDateTime, Reason);
 }
 public interface IPowerBackend { void Start(bool keepDisplay); void Stop(); }
 

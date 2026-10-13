@@ -4,6 +4,7 @@ namespace Awake.Core;
 /// Wall-clock times are presentation only; deadlines use the continuous clock.
 public static class SessionText
 {
+    public static string SceneName(Scene scene) => scene switch { Scene.Night => "夜间", Scene.PluggedLid => "接电合盖", Scene.Network => "外出合盖", _ => "日常" };
     public static string Clock(DateTime local) => local.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
     /// "预计 07:30 结束", or "预计明天 07:30 结束" when the deadline crosses midnight.
     public static string EndTime(DateTime endLocal, DateTime nowLocal)
@@ -22,5 +23,6 @@ public static class SessionText
     }
     /// Retained after a session ends so a returning user can see what happened.
     public static string LastResult(DateTime startLocal, DateTime endLocal, string reason) =>
-        $"上次 {Clock(startLocal)}–{Clock(endLocal)} · 运行 {Duration((endLocal - startLocal).TotalSeconds)} · {reason}";
+        $"上次 {Stamp(startLocal)}–{Stamp(endLocal)} · 运行 {Duration((endLocal - startLocal).TotalSeconds)} · {reason}";
+    private static string Stamp(DateTime value) => value.ToString("yyyy/MM/dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
 }

@@ -12,6 +12,8 @@ public partial class App : Application
     private Mutex? instance;
     private EventWaitHandle? activation;
     private RegisteredWaitHandle? activationWait;
+    private EventWaitHandle? updateRequest;
+    private RegisteredWaitHandle? updateWait;
     private MainViewModel? model;
     private TrayController? tray;
     private bool ownsMutex;
@@ -24,6 +26,21 @@ public partial class App : Application
         string user = identity.User!.Value;
         instance = new Mutex(true, @"Local\KeepMyMacAwake.Windows." + user, out bool first);
         ownsMutex = first;
+        if (e.Args.Contains("--prepare-update", StringComparer.OrdinalIgnoreCase))
+        {
+            int result = 0;
+            if (!first)
+            {
+                try
+                {
+                    ownsMutex = InstallationLifecycle.RequestExit(instance, @"Local\KeepMyMacAwake.Windows.Update." + user, TimeSpan.FromSeconds(20));
+                    if (!ownsMutex) result = 2;
+                }
+                catch (Exception error) when (error is WaitHandleCannotBeOpenedException or UnauthorizedAccessException)
+                { result = 2; }
+            }
+            IsExiting = true; Shutdown(result); return;
+        }
         activation = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\KeepMyMacAwake.Windows.Show." + user);
         if (!first) { activation.Set(); IsExiting = true; Shutdown(); return; }
         try
@@ -34,6 +51,9 @@ public partial class App : Application
             var window = new MainWindow(model);
             MainWindow = window;
             tray = new TrayController(model, () => window.Reveal(), RequestExit);
+            updateRequest = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\KeepMyMacAwake.Windows.Update." + user);
+            updateWait = ThreadPool.RegisterWaitForSingleObject(updateRequest,
+                (_, _) => Dispatcher.BeginInvoke(RequestExit), null, Timeout.Infinite, false);
             activationWait = ThreadPool.RegisterWaitForSingleObject(activation,
                 (_, _) => Dispatcher.BeginInvoke(() => window.Reveal()), null, Timeout.Infinite, false);
             if (!e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase) || !model.HasOnboarded) window.Show();
@@ -55,6 +75,8 @@ public partial class App : Application
         }
         IsExiting = true; Shutdown();
     }
+
+    internal void ShowCloseHint() => tray?.ShowCloseHint();
 
     private void ThemeChanged(object sender, UserPreferenceChangedEventArgs e)
     {
@@ -83,6 +105,8 @@ public partial class App : Application
     {
         SystemEvents.UserPreferenceChanged -= ThemeChanged;
         activationWait?.Unregister(null);
+        updateWait?.Unregister(null);
+        updateRequest?.Dispose();
         try { tray?.Dispose(); }
         finally
         {

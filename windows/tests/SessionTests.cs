@@ -34,6 +34,7 @@ public class SessionTests
         foreach (var row in json.RootElement.EnumerateArray())
         {
             var value = Preferences.ForScene(Enum.Parse<Scene>(row.GetProperty("scene").GetString()!));
+            Assert.Equal(row.GetProperty("displayName").GetString(), SessionText.SceneName(value.Scene));
             Assert.True(value.IsValid); Assert.Equal(row.GetProperty("durationMinutes").GetInt32(),value.DurationMinutes);
             Assert.Equal(Enum.Parse<ScreenMode>(row.GetProperty("screenMode").GetString()!),value.ScreenMode);
             Assert.Equal(row.GetProperty("lidMode").GetBoolean(),value.LidMode); Assert.Equal(row.GetProperty("requireAC").GetBoolean(),value.RequireAC); Assert.Equal(row.GetProperty("requireNetwork").GetBoolean(),value.RequireNetwork);

@@ -26,6 +26,9 @@ internal static class Program
             ("unchanged idle monitoring publishes no updates", IdleNotifications),
             ("scene parameter edits are visibly customized", CustomizedScene),
             ("ended session keeps end time and last result visible", LastResultSurvivesSceneChange),
+            ("completed result persists without replaying notification or session", PersistedResult),
+            ("notifications are opt in and first-close hint persists", NotificationAndTrayHint),
+            ("installer waits for exit and refuses an unconfirmed shutdown", InstallerHandoff),
             ("MainWindow XAML loads with real resources and bindings", WindowLoads)
         };
         int failed = 0;
@@ -54,9 +57,10 @@ internal static class Program
         public double Seconds;
         public PowerSample Sample = new(true, 95, true, ThermalLevel.Unknown);
         public MainViewModel Model { get; }
+        public PreferencesStore Store { get; }
         public Fixture(bool onboarded = true)
         {
-            var store = new PreferencesStore(directory);
+            var store = Store = new PreferencesStore(directory);
             store.Save(new Preferences(), onboarded);
             Model = new MainViewModel(Power, () => Sample,
                 () => new ClockSample(DateTimeOffset.UnixEpoch.AddSeconds(Seconds), Seconds), store, observeSystem: false);
@@ -169,5 +173,48 @@ internal static class Program
         Check(window.Content is not null, "XAML content was not loaded");
         Check(!window.IsVisible, "construction unexpectedly showed window");
         // Application.Shutdown closes it after all checks; no UI interaction claimed.
+    }
+    private static void PersistedResult()
+    {
+        using var f = new Fixture(); f.Model.NotifyOnEnd = true;
+        int notices = 0; f.Model.SessionEnded += _ => notices++;
+        f.ExpireOneMinute(); f.Model.RefreshMonitor();
+        Check(notices == 1, "completion notification duplicated");
+        using var next = new MainViewModel(new Backend(), () => f.Sample,
+            () => new ClockSample(DateTimeOffset.UnixEpoch.AddSeconds(60), 60), f.Store, false);
+        Check(next.LastResultText == f.Model.LastResultText && next.ShowLastResult, "result lost on restart");
+        Check(!next.IsActive && next.NotifyOnEnd && notices == 1, "restart resumed or replayed notification");
+    }
+    private static void NotificationAndTrayHint()
+    {
+        using var f = new Fixture(); int notices = 0; f.Model.SessionEnded += _ => notices++;
+        f.ExpireOneMinute(); Check(notices == 0, "default settings sent notification");
+        Check(f.Model.ConsumeTrayHint() && !f.Model.ConsumeTrayHint(), "first-close hint not one-time");
+        f.Model.NotifyOnEnd = true; f.Model.NetworkCommand.Execute(null);
+        Check(f.Model.NotifyOnEnd && f.Model.SceneStatusText.Contains("外出合盖", StringComparison.Ordinal), "scene lost notification preference or display name");
+        using var next = new MainViewModel(new Backend(), () => f.Sample,
+            () => new ClockSample(DateTimeOffset.UnixEpoch, 0), f.Store, false);
+        Check(!next.ConsumeTrayHint(), "close hint repeated after restart");
+    }
+    private static void InstallerHandoff()
+    {
+        foreach (bool release in new[] { true, false })
+        {
+            string id = @"Local\keepmymacawake-tests-" + Guid.NewGuid().ToString("N");
+            using var request = new EventWaitHandle(false, EventResetMode.AutoReset, id + ".exit");
+            using var ready = new ManualResetEventSlim();
+            using var finish = new ManualResetEventSlim();
+            var owner = new Thread(() =>
+            {
+                using var held = new Mutex(true, id); ready.Set();
+                request.WaitOne(); if (!release) finish.Wait(); held.ReleaseMutex();
+            });
+            owner.Start(); ready.Wait();
+            using var client = new Mutex(false, id);
+            bool confirmed = InstallationLifecycle.RequestExit(client, id + ".exit", TimeSpan.FromMilliseconds(250));
+            if (confirmed) client.ReleaseMutex();
+            finish.Set(); owner.Join();
+            Check(confirmed == release, "installer accepted unconfirmed exit or refused released owner");
+        }
     }
 }

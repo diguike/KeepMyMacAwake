@@ -9,6 +9,7 @@ public struct ScenePreset: Equatable {
     public let lidMode: Bool
     public let requireAC: Bool
     public let requireNetwork: Bool
+    public var displayName: String { name == "有网时" ? "外出合盖" : name }
     public static let all = [
         ScenePreset(name: "日常", durationMinutes: 60, screenMode: "自动熄屏", lidMode: false, requireAC: true, requireNetwork: false),
         ScenePreset(name: "夜间", durationMinutes: 480, screenMode: "夜间柔光", lidMode: false, requireAC: true, requireNetwork: false),
@@ -69,6 +70,10 @@ public enum SessionText {
     }
     /// Retained after a session ends so a returning user can see what happened.
     public static func lastResult(start: Date, end: Date, reason: String, calendar: Calendar = .current) -> String {
-        "上次 \(clock(start, calendar: calendar))–\(clock(end, calendar: calendar)) · 运行 \(duration(end.timeIntervalSince(start))) · \(reason)"
+        func stamp(_ date: Date) -> String {
+            let parts = calendar.dateComponents([.year, .month, .day], from: date)
+            return String(format: "%04d/%02d/%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0) + " " + clock(date, calendar: calendar)
+        }
+        return "上次 \(stamp(start))–\(stamp(end)) · 运行 \(duration(end.timeIntervalSince(start))) · \(reason)"
     }
 }
