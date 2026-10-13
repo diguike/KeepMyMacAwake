@@ -10,6 +10,8 @@
 
 `windows/service/` 启动入口硬拒绝，不能安装、运行或打进用户 ZIP。签名、可信安装器、客户端身份、目录操作的系统级验证尚未完成。内部恢复算法与模拟测试不是已部署的崩溃恢复机制。
 
+源码已通过 [CI #38365801719](https://github.com/diguike/KeepMyMacAwake/actions/runs/38365801719)：Windows实际执行10项WPF注入检查、构建与PowerShell打包，Mac实际执行51项测试及双架构打包；不含物理合盖或真实Windows电源请求验收。[PR #3](https://github.com/diguike/KeepMyMacAwake/pull/3) 已合入main，可直接拉取。
+
 ## 在 Windows 上打开工程
 
 首个验收环境建议受支持的 Windows 11 x64；安装 .NET 10 SDK，IDE 可用支持此 SDK 的 Visual Studio 或 VS Code。普通用户最终使用自包含 ZIP，不安装 SDK。
@@ -55,6 +57,7 @@ Linux 服务器可以 `AWAKE_DOTNET=/path/to/dotnet ./scripts/build-windows.sh`�
 | 自动熄屏 | 屏幕按系统超时熄灭；任务心跳持续。用只读 `powercfg /requests` 核对本进程请求 |
 | 常亮 / 柔光 | 两者持有显示请求；柔光不冒充硬件亮度，停止后遮罩撤销 |
 | 多屏 / DPI | 多缩放比例、屏幕插拔、任务栏位置、全屏应用切换；遮罩按屏幕复用，不遮住托盘与控制窗口 |
+| 外观 / 可访问性 | 系统明暗主题、高对比、键盘、读屏与窗口缩放；检查控件文字可读和启停入口可达 |
 | 锁屏 | 锁屏规则继续生效，遮罩撤下；独立记录任务是否持续和请求状态，解锁不复活已结束会话 |
 | 断网 | 只有勾选断网停止时结束；路径恢复不重新启动。路径可用不等于指定AI服务可达 |
 | 拔电 | 此预览始终结束普通会话，不以未验证电池模式继续 |

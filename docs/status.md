@@ -124,3 +124,14 @@ CI 首轮发现旧 Swift 对屏幕变更回调弱引用捕获的并发检查差�
 Windows普通预览只开放接电开盖，明确无应用热保护。合盖、电池、签名安装/卸载与可部署恢复服务未完成；不能把内部算法或模拟测试称为系统级恢复已可用。原生PowerRequest、锁屏、柔光多屏/DPI、睡眠通知、强杀请求释放、实际夜间长跑仍需Windows真机验收。
 
 没有发布Windows Release，没有安装系统服务，没有修改真实机器电源设置。Windows现有包用于本地开发交接；Mac仍保持0.2.1体验版。下一步先按windows-handoff.md做普通模式验收，再完善服务信任与恢复矩阵，验证热保护和Modern Standby边界。
+
+### 远端验证与交付
+
+源码提交 `443d4b1` 的 [push CI #38365801719](https://github.com/diguike/KeepMyMacAwake/actions/runs/38365801719) 与 [PR CI #38366426619](https://github.com/diguike/KeepMyMacAwake/actions/runs/38366426619) 四个任务全部通过：
+
+- Linux Swift 34项；Windows核心30项与协议/ABI/请求模拟27项，在Linux及Windows均通过。
+- macOS runner实际执行51项XCTest（原49项加共享合约2项），双架构ad-hoc App/helper编译、打包、严格签名校验通过；没有注册服务、改真实设置或物理合盖。
+- Windows runner实际执行10项STA/WPF注入检查全部通过，加载真实MainWindow XAML并检查ViewModel；不是操作完整可见UI、不是调用真实PowerRequest或物理验收。
+- Windows PowerShell自包含x64打包与CI artifact上传通过。服务器本地产物约70.4MiB；另核对ZIP完整性、SHA256、x64 PE架构、随包运行时、说明/许可证与服务排除。
+
+[PR #3](https://github.com/diguike/KeepMyMacAwake/pull/3) 已于2026-10-13 16:04（Asia/Singapore）合入main，合并提交 `78b1237`。服务器已快进同步；本地可以直接拉取main继续开发。普通功能的Windows原生使用、合盖/电池与签名安装仍按交接矩阵完成，不把CI通过表述为真机功能支持。
