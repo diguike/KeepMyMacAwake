@@ -158,4 +158,5 @@ Windows普通预览只开放接电开盖，明确无应用热保护。合盖、�
 
 - Mac：SwiftUI / AppModel 改动未在本机编译；需 macOS CI 或本机执行 `swift test`（含扩充后的到期原生测试）与 `./scripts/build-macos.sh`，并目视检查菜单栏宽度、副标题换行、上次结果行。
 - Windows：Windows runner 执行 `windows/app-tests/`；真机目视检查场景选中态在亮色、暗色、高对比度下的效果。
-- 尚未提交 PR、未推送、未发布。下一步：推送分支后由双端 CI 验证；“有网时”改名、结束通知、结果持久化、Windows 首次关窗提示等待用户决定。
+- [PR #4](https://github.com/diguike/KeepMyMacAwake/pull/4) 的 [push CI #38389490270](https://github.com/diguike/KeepMyMacAwake/actions/runs/38389490270) 与 [PR CI #38389519211](https://github.com/diguike/KeepMyMacAwake/actions/runs/38389519211) 全部通过：macOS runner 编译 SwiftUI 改动并执行 56 项 XCTest（含扩充的到期原生测试）、ad-hoc 打包成功；Windows runner 执行 11 项 WPF 注入检查全部通过。CI 不代替菜单栏宽度、换行和三种主题的目视检查。
+- 未合入 main、未发布。下一步：“有网时”改名、结束通知、结果持久化、Windows 首次关窗提示等待用户决定。
