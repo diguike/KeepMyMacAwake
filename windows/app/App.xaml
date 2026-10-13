@@ -43,6 +43,12 @@
       <Setter Property="Padding" Value="20,8" />
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
       <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+      <Style.Triggers>
+        <!-- The native selected-tab surface uses the system control color. -->
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+        </Trigger>
+      </Style.Triggers>
     </Style>
   </Application.Resources>
 </Application>

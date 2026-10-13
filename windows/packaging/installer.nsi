@@ -73,7 +73,7 @@ Section "安装"
     ${EndIf}
   ready:
   SetOutPath "$INSTDIR"
-  File /r "${APPDIR}/*"
+  File /r "${APPDIR}\*"
   WriteUninstaller "$INSTDIR\uninstall.exe"
   CreateDirectory "$SMPROGRAMS\KeepMyMacAwake"
   CreateShortcut "$SMPROGRAMS\KeepMyMacAwake\KeepMyMacAwake.lnk" "$INSTDIR\KeepMyMacAwake.Windows.exe"
