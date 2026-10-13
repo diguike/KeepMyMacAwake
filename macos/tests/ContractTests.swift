@@ -59,6 +59,7 @@ final class ContractTests: XCTestCase {
             XCTAssertTrue(preferences.isValid)
             // The app applies ScenePreset on selection; it must match the shared rules.
             let preset = try XCTUnwrap(ScenePreset.named(preferences.scene))
+            XCTAssertEqual(preset.displayName, row["displayName"] as? String)
             XCTAssertEqual([preset.durationMinutes], [preferences.durationMinutes], preset.name)
             XCTAssertEqual(preset.screenMode, preferences.screenMode, preset.name)
             XCTAssertEqual([preset.lidMode, preset.requireAC, preset.requireNetwork],

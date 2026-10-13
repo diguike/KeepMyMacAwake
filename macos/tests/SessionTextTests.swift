@@ -28,7 +28,7 @@ final class SessionTextTests: XCTestCase {
     }
     func testLastResultKeepsTimesDurationAndReason() {
         XCTAssertEqual(SessionText.lastResult(start: date(13, 23, 10), end: date(14, 7, 10), reason: "设定时间已到", calendar: calendar),
-                       "上次 23:10–07:10 · 运行 8 小时 · 设定时间已到")
+                       "上次 2026/10/13 23:10–2026/10/14 07:10 · 运行 8 小时 · 设定时间已到")
     }
     func testSummaryAndCustomization() throws {
         var value = AwakePreferences()

@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     {
         if (((App)Application.Current).IsExiting || Application.Current.Dispatcher.HasShutdownStarted) return;
         e.Cancel = true; Hide();
+        ((App)Application.Current).ShowCloseHint();
     }
     private void ExitClicked(object sender, RoutedEventArgs e) => ((App)Application.Current).RequestExit();
     protected override void OnPreviewKeyDown(KeyEventArgs e)

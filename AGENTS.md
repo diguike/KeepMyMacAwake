@@ -18,6 +18,7 @@ AGENTS.md 是主说明；CLAUDE.md 仅提供入口，避免双份规则漂移。
 ## 环境与验证
 
 - 2026-10-10 的 Mac 验证见历史记录；2026-10-13 本轮环境为 Linux 服务器。Linux 执行双端纯逻辑和 Windows 模拟 API 检查，可跨编译 Windows 源码；原生 API、UI、锁屏与物理合盖必须分别记录真机证据。
+- 2026-10-14 已同步至 Mac 本地开发：可执行 Mac 原生检查，以及 Windows 交叉编译/打包。当前没有 Windows 运行环境；本轮本地交付与证据见 docs/mac-windows-workflow.md、docs/status.md，不能用旧 CI 代替新增 WPF/安装器验证。
 - Swift Package：`swift test` 验证纯逻辑；Mac 用 `./scripts/build-macos.sh` 编译和打包。结果要按实际执行记录。
 - 当前实现 SwiftUI + AppKit + IOKit + SMAppService 独立特权 helper；macOS 14+。合盖后端仍需验证。
 - Windows 使用 .NET 10 / WPF；`dotnet build windows/KeepMyMacAwake.slnx` 构建，`dotnet test windows/tests/Awake.Core.Tests.csproj` 和 `dotnet run --project windows/service-tests/Awake.Service.Tests.csproj` 可在 Linux 跑；`windows/app-tests/` 必须在 Windows 执行。构建入口 `scripts/build-windows.sh` / `.ps1`。

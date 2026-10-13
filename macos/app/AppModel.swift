@@ -12,6 +12,8 @@ import AwakeShared
     @Published var requireNetwork = false { didSet { savePreferences() } }
     @Published var screenMode = "自动熄屏" { didSet { savePreferences() } }
     @Published var showCountdown = true { didSet { savePreferences() } }
+    @Published private(set) var notifyOnEnd = false
+    @Published var notificationMessage = "仅通知保活结束，不判断 AI 任务完成。"
     var keepDisplay: Bool { get { screenMode == "保持常亮" } set { screenMode = newValue ? "保持常亮" : "自动熄屏" } }
     var nightMode: Bool { get { screenMode == "夜间柔光" } set { screenMode = newValue ? "夜间柔光" : "自动熄屏" } }
     @Published var dimAmount = 0.94 { didSet { savePreferences() } }
@@ -38,6 +40,8 @@ import AwakeShared
     private let readHelperStatus: (() -> SMAppService.Status)?
     private let requestHelper: ((HelperRequest) async throws -> HelperReply)?
     private let defaults: UserDefaults?
+    private let notifyEnd: (SessionResult) -> Void
+    private let enableNotifications: () async throws -> Bool
     private var preferencesReady = false
     private let client = HelperClient()
     private let assertion = IdleAssertion()
@@ -46,6 +50,7 @@ import AwakeShared
     private var timer: Timer?
     private var isRefreshing = false
     private var actionGeneration: UInt64 = 0
+    private var notificationGeneration: UInt64 = 0
     private var lastHelperPoll: Double?
     private var leaseID: UUID?
     private var idleStart: ClockSample?
@@ -55,16 +60,28 @@ import AwakeShared
     var policy: SafetyPolicy { SafetyPolicy(requireAC: requireAC, minimumBattery: minimumBattery, requireNetwork: requireNetwork) }
     var hasSession: Bool { active || idleStart != nil || leaseID != nil }
     var helperBuildEnabled: Bool { Bundle.main.object(forInfoDictionaryKey: "AwakeHelperEnabled") as? Bool == true }
-    private var serviceStatus: SMAppService.Status { readHelperStatus?() ?? daemon.status }
+    private var serviceStatus: SMAppService.Status {
+        if let readHelperStatus { return readHelperStatus() }
+        return helperBuildEnabled ? daemon.status : .notRegistered
+    }
     var helperNeedsApproval: Bool { serviceStatus == .requiresApproval }
     init(defaults: UserDefaults? = .standard, sample: @escaping () -> PowerSample = MacMonitor.sample,
          clock: @escaping () -> ClockSample = MacMonitor.clock,
          helperStatus: (() -> SMAppService.Status)? = nil,
          helperRequest: ((HelperRequest) async throws -> HelperReply)? = nil,
+         notifyEnd: ((SessionResult) -> Void)? = nil,
+         enableNotifications: (() async throws -> Bool)? = nil,
          startMonitoring: Bool = true) {
         self.defaults = defaults; self.readSample = sample; self.readClock = clock
         self.readHelperStatus = helperStatus; self.requestHelper = helperRequest
+        self.notifyEnd = notifyEnd ?? { SessionNotifications().send($0) }
+        self.enableNotifications = enableNotifications ?? { try await SessionNotifications().enable() }
         onboarded = defaults?.bool(forKey: "onboarded") ?? false
+        notifyOnEnd = defaults?.bool(forKey: "notifyOnEnd.v1") ?? false
+        if let data = defaults?.data(forKey: "lastResult.v1"),
+           let result = try? JSONDecoder().decode(SessionResult.self, from: data), result.isValid {
+            lastResult = result.text
+        }
         if let data = defaults?.data(forKey: "preferences.v1"),
            let preferences = try? JSONDecoder().decode(AwakePreferences.self, from: data), preferences.isValid {
             scene = preferences.scene; durationMinutes = preferences.durationMinutes; customMinutes = preferences.customMinutes
@@ -116,21 +133,43 @@ import AwakeShared
         if lidMode && !helperBuildEnabled { return "此版本不支持合盖" }
         if lidMode && serviceStatus != .enabled { return "合盖需先批准组件" }
         if requireAC && sample.onAC == false { return "请接通电源" }
+        var evaluator = SafetyEvaluator()
+        if let reason = evaluator.evaluate(sample, policy: policy, now: readClock().continuous) { return reason.message }
         return "随时准备好"
     }
     /// One line under the title: the promise of the running session, or what a start will request.
     var statusDetail: String {
         if active {
-            if unlimitedSession { return "\(scene) · 直到手动停止" }
-            guard let startedAt else { return "\(scene) · 保持运行中" }
-            return "\(scene) · " + SessionText.endTime(startedAt.addingTimeInterval(sessionSeconds), now: readClock().wall)
+            if unlimitedSession { return "\(sceneDisplayName) · 直到手动停止" }
+            guard let startedAt else { return "\(sceneDisplayName) · 保持运行中" }
+            return "\(sceneDisplayName) · " + SessionText.endTime(startedAt.addingTimeInterval(sessionSeconds), now: readClock().wall)
         }
         let value = preferences
-        return "\(scene)\(value.isCustomized ? "（已调整）" : "") · \(value.summary)"
+        return "\(sceneDisplayName)\(value.isCustomized ? "（已调整）" : "") · \(value.summary)"
     }
+    var sceneDisplayName: String { ScenePreset.named(scene)?.displayName ?? scene }
     private func recordEnd(_ reason: String) {
-        if let startedAt { lastResult = SessionText.lastResult(start: startedAt, end: readClock().wall, reason: reason) }
+        if let startedAt {
+            let result = SessionResult(start: startedAt, end: readClock().wall, reason: reason)
+            lastResult = result.text
+            if let data = try? JSONEncoder().encode(result) { defaults?.set(data, forKey: "lastResult.v1") }
+            if notifyOnEnd { notifyEnd(result) }
+        }
         startedAt = nil
+    }
+    func setNotifications(_ enabled: Bool) async {
+        notificationGeneration &+= 1
+        let generation = notificationGeneration
+        if !enabled {
+            notifyOnEnd = false; defaults?.set(false, forKey: "notifyOnEnd.v1"); return
+        }
+        do {
+            let granted = try await enableNotifications()
+            guard generation == notificationGeneration else { return }
+            notifyOnEnd = granted
+            defaults?.set(notifyOnEnd, forKey: "notifyOnEnd.v1")
+            notificationMessage = notifyOnEnd ? "结束时发送系统通知；系统可按你的通知设置静音。" : "通知未获允许，可在系统设置 → 通知中开启。"
+        } catch { if generation == notificationGeneration { notificationMessage = "通知授权失败：\(error.localizedDescription)" } }
     }
     var sessionProgress: Double { active && !unlimitedSession && sessionSeconds > 0 ? max(0, min(1, remaining / sessionSeconds)) : 1 }
     var thermalDescription: String {
@@ -151,6 +190,10 @@ import AwakeShared
     func acknowledge() { onboarded = true; defaults?.set(true, forKey: "onboarded") }
     func updateAuthorization() {
         publish(\.helperConnected, false)
+        if !helperBuildEnabled && readHelperStatus == nil {
+            publish(\.helperState, "普通预览不连接合盖组件；请用签名安装版管理。")
+            return
+        }
         switch serviceStatus {
         case .enabled: publish(\.helperState, "已批准，等待连接检查")
         case .requiresApproval: publish(\.helperState, "需要在系统设置批准后台组件")
@@ -269,6 +312,7 @@ import AwakeShared
         }
     }
     func recover() async {
+        guard helperBuildEnabled || requestHelper != nil else { message = "此预览没有合盖会话；请用已安装的签名 App 管理后台组件。"; return }
         guard !busy, !active, idleStart == nil else { return }
         actionGeneration &+= 1
         busy = true; defer { busy = false }
@@ -281,6 +325,7 @@ import AwakeShared
         } catch { message = "恢复失败：\(error.localizedDescription)"; client.disconnect() }
     }
     func removeHelper() async {
+        guard helperBuildEnabled else { message = "请用已安装的签名 App 移除后台组件。"; return }
         guard await stop() else { return }
         busy = true; defer { busy = false }
         do {
@@ -341,7 +386,10 @@ import AwakeShared
                     publish(\.message, "合盖设置已就绪 · 合盖前请保持通风")
                 } else { publish(\.active, false); publish(\.message, "后台有其他会话，等待结束或恢复") }
             } else {
-                if leaseID != nil { recordEnd(reply.status.stopReason?.message ?? "后台会话已结束") }
+                if leaseID != nil {
+                    let reason = reply.status.stopReason?.message ?? "后台会话已结束"
+                    recordEnd(reason + (reply.status.phase == .recoveryRequired ? "；恢复未确认" : ""))
+                }
                 publish(\.active, false); leaseID = nil; publish(\.remaining, 0); publish(\.unlimitedSession, false)
                 dimmer.stop(); try assertion.stop()
                 publish(\.needsRecovery, reply.status.phase == .recoveryRequired)

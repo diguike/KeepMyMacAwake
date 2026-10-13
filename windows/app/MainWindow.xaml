@@ -38,12 +38,14 @@
         <TextBlock Text="{Binding PhaseText}" FontSize="11" AutomationProperties.LiveSetting="Polite" />
       </Border>
     </Grid>
-    <TextBlock DockPanel.Dock="Bottom" Text="Windows 开发预览 · 0.3.0" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,10,0,0" />
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding VersionText}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,10,0,0" />
     <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
       <StackPanel>
-        <Button Content="{Binding ActionText}" Command="{Binding ToggleCommand}" Background="{DynamicResource AccentBrush}"
+        <Button Command="{Binding ToggleCommand}" Background="{DynamicResource AccentBrush}"
                 Foreground="{DynamicResource AccentTextBrush}" FontWeight="SemiBold" FontSize="15" MinHeight="46"
-                AutomationProperties.Name="开始或停止保活" ToolTip="Ctrl+Enter" />
+                AutomationProperties.Name="开始或停止保活" ToolTip="Ctrl+Enter">
+          <TextBlock Text="{Binding ActionText}" Foreground="{DynamicResource AccentTextBrush}" />
+        </Button>
         <Button Content="再加 15 分钟" Command="{Binding ExtendCommand}" Visibility="{Binding IsFiniteActive, Converter={StaticResource BoolVisibility}}" />
         <Button Content="恢复保活状态" Command="{Binding RecoverCommand}" Visibility="{Binding NeedsRecovery, Converter={StaticResource BoolVisibility}}" />
         <TextBlock Text="{Binding Message}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,5,0,0" AutomationProperties.LiveSetting="Polite" />
@@ -56,7 +58,9 @@
         <Border Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="16" Margin="0,22,0,22">
           <TextBlock Text="此预览支持接电、开盖保活。&#10;合盖与电池保活尚未开放，应用热保护不可用。&#10;不改变锁屏规则，不自动判断任务完成。" LineHeight="24" />
         </Border>
-        <Button Content="开始使用" Command="{Binding OnboardCommand}" Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource AccentTextBrush}" />
+        <Button Command="{Binding OnboardCommand}" Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource AccentTextBrush}">
+          <TextBlock Text="开始使用" Foreground="{DynamicResource AccentTextBrush}" />
+        </Button>
       </StackPanel>
       <TabControl Visibility="{Binding HasOnboarded, Converter={StaticResource BoolVisibility}}" Background="{DynamicResource PageBrush}" BorderThickness="0">
         <TabItem Header="保活">
@@ -79,7 +83,7 @@
                 <Button Content="日常" Command="{Binding DailyCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsDailyScene}" ToolTip="1 小时 · 开盖 · 仅接电 · 自动熄屏" />
                 <Button Content="夜间" Command="{Binding NightCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsNightScene}" ToolTip="8 小时 · 开盖 · 仅接电 · 夜间柔光" />
                 <Button Content="接电合盖" Command="{Binding LidCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsLidScene}" ToolTip="直到手动停止 · 合盖 · 仅接电；此预览暂不支持合盖" />
-                <Button Content="有网时" Command="{Binding NetworkCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsNetworkScene}" Margin="0" ToolTip="2 小时 · 合盖 · 允许电池 · 断网停止；此预览暂不支持" />
+                <Button Content="外出合盖" Command="{Binding NetworkCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsNetworkScene}" Margin="0" ToolTip="2 小时 · 合盖 · 允许电池 · 断网停止；此预览暂不支持" />
               </UniformGrid>
               <Border Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="16">
                 <StackPanel IsEnabled="{Binding CanEdit}">
@@ -123,6 +127,10 @@
                 <StackPanel>
                   <CheckBox Content="登录时启动（启动后保持待机）" IsChecked="{Binding LoginEnabled}" />
                   <CheckBox Content="托盘显示剩余时间" IsChecked="{Binding ShowCountdown}" />
+                  <CheckBox Content="保活结束时通知" IsChecked="{Binding NotifyOnEnd}" />
+                  <TextBlock Text="仅通知保活结束，不判断 AI 任务完成。系统可能按通知设置静音。" Foreground="{DynamicResource MutedBrush}" FontSize="10" />
+                  <TextBlock Text="本机保留最近一次结束的时间和原因；重启保持待机，不保存任务内容。" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,6,0,0" />
+                  <TextBlock Text="{Binding HistoryNotice}" Foreground="{DynamicResource AccentBrush}" FontSize="10" />
                   <TextBlock Text="电量保护下限（10–80%）" FontSize="11" Margin="0,12,0,5" />
                   <TextBox Text="{Binding MinimumBatteryText, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEdit}" AutomationProperties.Name="电量保护下限" />
                   <TextBlock Text="此预览暂不开放电池保活；保留该设置供后续使用。" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,6,0,0" />

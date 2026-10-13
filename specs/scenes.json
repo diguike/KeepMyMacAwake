@@ -1,6 +1,6 @@
 [
-  {"scene":"Daily","macName":"日常","durationMinutes":60,"screenMode":"Automatic","macScreenMode":"自动熄屏","lidMode":false,"requireAC":true,"requireNetwork":false},
-  {"scene":"Night","macName":"夜间","durationMinutes":480,"screenMode":"NightDim","macScreenMode":"夜间柔光","lidMode":false,"requireAC":true,"requireNetwork":false},
-  {"scene":"PluggedLid","macName":"接电合盖","durationMinutes":-1,"screenMode":"Automatic","macScreenMode":"自动熄屏","lidMode":true,"requireAC":true,"requireNetwork":false},
-  {"scene":"Network","macName":"有网时","durationMinutes":120,"screenMode":"Automatic","macScreenMode":"自动熄屏","lidMode":true,"requireAC":false,"requireNetwork":true}
+  {"scene":"Daily","macName":"日常","displayName":"日常","durationMinutes":60,"screenMode":"Automatic","macScreenMode":"自动熄屏","lidMode":false,"requireAC":true,"requireNetwork":false},
+  {"scene":"Night","macName":"夜间","displayName":"夜间","durationMinutes":480,"screenMode":"NightDim","macScreenMode":"夜间柔光","lidMode":false,"requireAC":true,"requireNetwork":false},
+  {"scene":"PluggedLid","macName":"接电合盖","displayName":"接电合盖","durationMinutes":-1,"screenMode":"Automatic","macScreenMode":"自动熄屏","lidMode":true,"requireAC":true,"requireNetwork":false},
+  {"scene":"Network","macName":"有网时","displayName":"外出合盖","durationMinutes":120,"screenMode":"Automatic","macScreenMode":"自动熄屏","lidMode":true,"requireAC":false,"requireNetwork":true}
 ]

@@ -38,8 +38,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private DateTimeOffset? startedAt;
     private DateTimeOffset? endsAt;
     private string? lastResult;
+    private string? historyNotice;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action<SessionResult>? SessionEnded;
     public IReadOnlyList<Choice<int>> Durations { get; } = [new("30 分钟", 30), new("1 小时", 60), new("2 小时", 120), new("8 小时", 480), new("直到手动停止", -1), new("自定义…", 0)];
     public IReadOnlyList<Choice<ScreenMode>> Screens { get; } = [new("自动熄屏", ScreenMode.Automatic), new("保持常亮", ScreenMode.AlwaysOn), new("夜间柔光", ScreenMode.NightDim)];
     public ICommand ToggleCommand { get; }
@@ -60,6 +62,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         store = preferenceStore; this.observeSystem = observeSystem;
         (preferences, onboarded, string? notice) = store.Load();
         message = notice ?? "未开启";
+        var (result, resultNotice) = store.LoadResult();
+        lastResult = result?.Text;
+        historyNotice = resultNotice;
         customMinutesText = preferences.CustomMinutes.ToString(CultureInfo.InvariantCulture);
         minimumBatteryText = preferences.MinimumBattery.ToString(CultureInfo.InvariantCulture);
         session = new SessionController(backend, WindowsMonitor.Capabilities);
@@ -97,6 +102,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public string PhaseText => NeedsRecovery ? "待恢复" : IsActive ? "运行中" : "待机";
     public string ActionText => IsActive ? "停止保活" : "开始保活";
     public string Message => message;
+    public string VersionText => "Windows 开发预览 · " + typeof(MainViewModel).Assembly.GetName().Version?.ToString(3);
+    public string HistoryNotice => historyNotice ?? "";
     public string RemainingText => IsActive ? session.RemainingSeconds is null ? "直到手动停止" : FormatRemaining(session.RemainingSeconds.Value)
         : NeedsRecovery ? "等待恢复" : preferences.LidMode ? "合盖尚未开放" : !preferences.RequireAC ? "电池尚未开放" : sample.OnAC != true ? "请接通电源" : "尚未开启";
     public string SceneStatusText
@@ -105,7 +112,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             var preset = Preferences.ForScene(preferences.Scene);
             bool custom = DurationMinutes != preset.DurationMinutes || ScreenMode != preset.ScreenMode || LidMode != preset.LidMode || RequireAC != preset.RequireAC || RequireNetwork != preset.RequireNetwork;
-            return SceneName(preferences.Scene) + (custom ? " · 已自定义" : "") + (IsActive ? " · 保持运行中" : "");
+            return SessionText.SceneName(preferences.Scene) + (custom ? " · 已自定义" : "") + (IsActive ? " · 保持运行中" : "");
         }
     }
     // Same order as the Mac summary: duration · lid · power · network · screen.
@@ -144,6 +151,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public bool RequireAC { get => preferences.RequireAC; set { if (!CanEdit || value == preferences.RequireAC) return; Update(preferences with { RequireAC = value }); Raise(nameof(RequireAC)); } }
     public bool RequireNetwork { get => preferences.RequireNetwork; set { if (!CanEdit || value == preferences.RequireNetwork) return; Update(preferences with { RequireNetwork = value }); Raise(nameof(RequireNetwork)); } }
     public bool ShowCountdown { get => preferences.ShowCountdown; set { if (value == preferences.ShowCountdown) return; Update(preferences with { ShowCountdown = value }); Raise(nameof(ShowCountdown)); } }
+    public bool NotifyOnEnd { get => preferences.NotifyOnEnd; set { if (value == preferences.NotifyOnEnd) return; Update(preferences with { NotifyOnEnd = value }); Raise(nameof(NotifyOnEnd)); } }
+    internal bool ConsumeTrayHint()
+    {
+        if (store.TrayHintShown) return false;
+        try { store.RememberTrayHint(); }
+        catch (Exception error) { message = "首次托盘提示记录失败：" + error.Message; Refresh(); }
+        return true;
+    }
     public bool LoginEnabled
     {
         get => loginEnabled;
@@ -159,7 +174,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void Choose(Scene scene)
     {
         if (!CanEdit) return;
-        var next = Preferences.ForScene(scene) with { CustomMinutes = preferences.CustomMinutes, MinimumBattery = preferences.MinimumBattery, DimAmount = preferences.DimAmount, ShowCountdown = preferences.ShowCountdown };
+        var next = Preferences.ForScene(scene) with { CustomMinutes = preferences.CustomMinutes, MinimumBattery = preferences.MinimumBattery, DimAmount = preferences.DimAmount, ShowCountdown = preferences.ShowCountdown, NotifyOnEnd = preferences.NotifyOnEnd };
         preferences = next;
         customMinutesText = next.CustomMinutes.ToString(CultureInfo.InvariantCulture);
         minimumBatteryText = next.MinimumBattery.ToString(CultureInfo.InvariantCulture);
@@ -210,16 +225,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public bool TryStop(string reason = "已手动停止")
     {
-        if (IsActive) RecordEnd(reason);
+        bool wasActive = IsActive;
         Exception? dimError = null;
         try { dimmer.Stop(); } catch (Exception error) { dimError = error; }
         try
         {
             session.Stop();
+            if (wasActive) RecordEnd(reason);
             message = dimError is null ? "已停止保活，恢复正常电源行为" : "保活已释放，柔光撤销失败：" + dimError.Message;
             Refresh(); return dimError is null;
         }
-        catch (Exception error) { message = "保活释放失败：" + error.Message; Refresh(); return false; }
+        catch (Exception error) { if (wasActive) RecordEnd(reason + "；保活释放失败，待恢复"); message = "保活释放失败：" + error.Message; Refresh(); return false; }
     }
 
     private void Tick()
@@ -251,9 +267,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (disposed) return;
         if (e.Mode is PowerModes.Suspend or PowerModes.Resume && IsActive)
         {
-            dimmer.Stop(); RecordEnd("系统进入过休眠");
-            try { session.Stop(StopReason.Disconnected); message = "系统进入过休眠，保活已结束；请手动重新开启"; }
-            catch (Exception error) { message = error.Message; }
+            dimmer.Stop();
+            try { session.Stop(StopReason.Disconnected); RecordEnd("系统进入过休眠"); message = "系统进入过休眠，保活已结束；请手动重新开启"; }
+            catch (Exception error) { RecordEnd("系统进入过休眠；保活释放失败，待恢复"); message = error.Message; }
             Refresh();
         }
         else Tick();
@@ -273,7 +289,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void SessionEnding(object sender, SessionEndingCancelEventArgs e) => TryStop("系统注销或关机");
     private void RecordEnd(string reason)
     {
-        if (startedAt is { } start) lastResult = SessionText.LastResult(start.LocalDateTime, readClock().Wall.LocalDateTime, reason);
+        if (startedAt is { } start)
+        {
+            var end = readClock().Wall;
+            var result = new SessionResult(start, end < start ? start : end, reason + (NeedsRecovery && !reason.Contains("待恢复", StringComparison.Ordinal) ? "；保活释放失败，待恢复" : ""));
+            lastResult = result.Text;
+            try { store.SaveResult(result); historyNotice = null; }
+            catch (Exception error) { historyNotice = "上次结果保存失败：" + error.Message; }
+            if (NotifyOnEnd) SessionEnded?.Invoke(result);
+        }
         startedAt = null; endsAt = null;
     }
 
@@ -300,11 +324,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         Publish(nameof(Message), Message); Publish(nameof(RemainingText), RemainingText); Publish(nameof(SceneStatusText), SceneStatusText); Publish(nameof(ConfigurationText), ConfigurationText);
         Publish(nameof(Progress), Progress); Publish(nameof(TelemetryText), TelemetryText); Publish(nameof(CapabilityText), CapabilityText); Publish(nameof(TrayText), TrayText);
         Publish(nameof(EndText), EndText); Publish(nameof(LastResultText), LastResultText); Publish(nameof(ShowLastResult), ShowLastResult);
+        Publish(nameof(HistoryNotice), HistoryNotice);
         Publish(nameof(IsDailyScene), IsDailyScene); Publish(nameof(IsNightScene), IsNightScene); Publish(nameof(IsLidScene), IsLidScene); Publish(nameof(IsNetworkScene), IsNetworkScene);
         ((RelayCommand)ToggleCommand).Refresh(); ((RelayCommand)ExtendCommand).Refresh(); ((RelayCommand)RecoverCommand).Refresh();
         foreach (ICommand command in new[] { DailyCommand, NightCommand, LidCommand, NetworkCommand }) ((RelayCommand)command).Refresh();
     }
-    private static string SceneName(Scene scene) => scene switch { Scene.Night => "夜间", Scene.PluggedLid => "接电合盖", Scene.Network => "有网时", _ => "日常" };
     private static string FormatRemaining(double seconds)
     {
         long value = (long)Math.Ceiling(seconds);
