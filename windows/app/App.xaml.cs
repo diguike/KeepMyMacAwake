@@ -64,10 +64,10 @@ public partial class App : Application
     {
         using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
         bool dark = key?.GetValue("AppsUseLightTheme") is int value && value == 0;
-        string[] names = ["PageBrush", "CardBrush", "TextBrush", "MutedBrush", "LineBrush", "AccentBrush", "AccentTextBrush"];
+        string[] names = ["PageBrush", "CardBrush", "TextBrush", "MutedBrush", "LineBrush", "AccentBrush", "AccentTextBrush", "AccentSoftBrush"];
         string[] colors = dark
-            ? ["#211F1D", "#302C28", "#F0EBE4", "#B6AEA4", "#51483F", "#DD9865", "#211F1D"]
-            : ["#FBF9F6", "#F0EBE4", "#292621", "#716A62", "#DAD3C9", "#B55E2C", "#FFFFFF"];
+            ? ["#211F1D", "#302C28", "#F0EBE4", "#B6AEA4", "#51483F", "#DD9865", "#211F1D", "#4A3424"]
+            : ["#FBF9F6", "#F0EBE4", "#292621", "#716A62", "#DAD3C9", "#B55E2C", "#FFFFFF", "#F5E3D5"];
         for (int i = 0; i < names.Length; i++)
             Resources[names[i]] = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colors[i]));
         if (SystemParameters.HighContrast)
@@ -75,7 +75,7 @@ public partial class App : Application
             Resources["PageBrush"] = SystemColors.WindowBrush; Resources["CardBrush"] = SystemColors.ControlBrush;
             Resources["TextBrush"] = SystemColors.WindowTextBrush; Resources["MutedBrush"] = SystemColors.WindowTextBrush;
             Resources["LineBrush"] = SystemColors.WindowTextBrush; Resources["AccentBrush"] = SystemColors.HighlightBrush;
-            Resources["AccentTextBrush"] = SystemColors.HighlightTextBrush;
+            Resources["AccentTextBrush"] = SystemColors.HighlightTextBrush; Resources["AccentSoftBrush"] = SystemColors.WindowBrush;
         }
     }
 

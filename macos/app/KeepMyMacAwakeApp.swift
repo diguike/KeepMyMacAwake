@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import CoreServices
+import AwakeCore
 
 @main struct KeepMyMacAwakeApp: App {
     @NSApplicationDelegateAdaptor(AwakeAppDelegate.self) private var delegate
@@ -12,7 +13,7 @@ import CoreServices
             HStack(spacing: 4) {
                 Image(systemName: model.active ? "cup.and.saucer.fill" : "cup.and.saucer")
                 if model.active && model.showCountdown {
-                    Text(model.unlimitedSession ? "∞" : "\(Int(ceil(model.remaining / 60)))m").monospacedDigit()
+                    Text(model.unlimitedSession ? "∞" : SessionText.menuBar(remaining: model.remaining)).monospacedDigit()
                 }
             }.accessibilityLabel(model.active ? "KeepMyMacAwake 正在运行" : "KeepMyMacAwake 未开启")
         }.menuBarExtraStyle(.window)
@@ -58,8 +59,7 @@ struct AwakePanel: View {
     var compact = true
     @State private var tab = "保活"
     private let amber = Color(red: 0.77, green: 0.40, blue: 0.16)
-    private let scenes = [("日常", "cup.and.saucer", "专心长任务"), ("夜间", "moon", "柔光伴你休息"),
-                          ("接电合盖", "powerplug", "断电时停止"), ("有网时", "wifi", "断网时停止")]
+    private let scenes = [("日常", "cup.and.saucer"), ("夜间", "moon"), ("接电合盖", "powerplug"), ("有网时", "wifi")]
     var body: some View {
         VStack(spacing: 0) {
             header.padding(.horizontal, 22).padding(.top, compact ? 18 : 22).padding(.bottom, 16)
@@ -103,14 +103,14 @@ struct AwakePanel: View {
             Image(systemName: "moon.stars").font(.system(size: 50, weight: .ultraLight)).foregroundStyle(amber)
                 .frame(maxWidth: .infinity).padding(.vertical, 20)
             Text("把长任务留给 Mac。\n把时间留给自己。").font(.system(size: 29, weight: .medium, design: .rounded)).lineSpacing(6)
-            Text("一个安静的菜单栏小工具。设定时长，选择场景，放心让下载、构建和远程工作继续。")
+            Text("让已经启动的 AI 编程、构建和下载继续运行。设定时长，选好场景，离开或休息时不会因闲置休眠中断。")
                 .font(.callout).foregroundStyle(.secondary).lineSpacing(4)
             VStack(alignment: .leading, spacing: 12) {
                 Label("定时结束，也能直到手动停止", systemImage: "timer")
                 Label("夜间柔光，结束后自动恢复", systemImage: "moon")
                 Label("合盖前准备好，电量与热状态保护", systemImage: "laptopcomputer")
             }.font(.callout)
-            Text("请保持通风。保活不会绕过锁屏；合盖需要批准后台组件。")
+            Text("请保持通风。不改变锁屏规则，也不判断任务是否完成；合盖需要批准后台组件。")
                 .font(.caption).foregroundStyle(.secondary)
             Button("开始使用") { model.acknowledge() }
                 .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
@@ -129,11 +129,16 @@ struct AwakePanel: View {
                 }.frame(width: 70, height: 70).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 7) {
                     Text(model.statusTitle).font(.system(size: compact ? 25 : 30, weight: .medium, design: .rounded)).monospacedDigit()
-                    Text(model.active ? "\(model.scene) · 保持运行中" : "选好场景，一键开始").font(.caption).foregroundStyle(.secondary)
+                    Text(model.statusDetail).font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }.padding(.vertical, 8)
+            if !model.active, let lastResult = model.lastResult {
+                Label(lastResult, systemImage: "clock.arrow.circlepath").font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            }
             HStack(spacing: 7) {
-                ForEach(scenes, id: \.0) { name, icon, detail in
+                ForEach(scenes, id: \.0) { name, icon in
                     Button { model.chooseScene(name) } label: {
                         VStack(spacing: 7) {
                             Image(systemName: icon).font(.system(size: 18, weight: .medium))
@@ -143,7 +148,8 @@ struct AwakePanel: View {
                             .background(model.scene == name ? amber.opacity(0.10) : Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(model.scene == name ? amber.opacity(0.35) : .clear, lineWidth: 1))
                     }.buttonStyle(.plain).disabled(model.hasSession || model.busy)
-                        .accessibilityLabel("选择\(name)场景").help(detail)
+                        .accessibilityLabel("选择\(name)场景").accessibilityAddTraits(model.scene == name ? .isSelected : [])
+                        .help(sceneHelp(name))
                 }
             }
             VStack(alignment: .leading, spacing: 13) {
@@ -178,6 +184,7 @@ struct AwakePanel: View {
             telemetry
         }
     }
+    private func sceneHelp(_ name: String) -> String { ScenePreset.named(name)?.preferences.summary ?? name }
     private var primaryAction: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {

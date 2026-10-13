@@ -57,6 +57,13 @@ final class ContractTests: XCTestCase {
             preferences.requireAC = try XCTUnwrap(row["requireAC"] as? Bool)
             preferences.requireNetwork = try XCTUnwrap(row["requireNetwork"] as? Bool)
             XCTAssertTrue(preferences.isValid)
+            // The app applies ScenePreset on selection; it must match the shared rules.
+            let preset = try XCTUnwrap(ScenePreset.named(preferences.scene))
+            XCTAssertEqual([preset.durationMinutes], [preferences.durationMinutes], preset.name)
+            XCTAssertEqual(preset.screenMode, preferences.screenMode, preset.name)
+            XCTAssertEqual([preset.lidMode, preset.requireAC, preset.requireNetwork],
+                           [preferences.lidMode, preferences.requireAC, preferences.requireNetwork], preset.name)
         }
+        XCTAssertEqual(ScenePreset.all.count, try rows("scenes").count)
     }
 }

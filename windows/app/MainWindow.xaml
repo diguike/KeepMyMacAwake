@@ -3,6 +3,22 @@
         Title="KeepMyMacAwake · Windows" Width="500" Height="800" MinWidth="440" MinHeight="560"
         Background="{DynamicResource PageBrush}" FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13"
         WindowStartupLocation="CenterScreen" Closing="WindowClosing">
+  <Window.Resources>
+    <!-- Tag carries the scene's selected flag; selection must not rely on color alone. -->
+    <Style x:Key="SceneButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Margin" Value="0,0,5,0" />
+      <Setter Property="Padding" Value="4,12" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+          <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+          <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+          <Setter Property="BorderThickness" Value="2" />
+          <Setter Property="FontWeight" Value="SemiBold" />
+          <Setter Property="AutomationProperties.ItemStatus" Value="已选择" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
   <Window.InputBindings>
     <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding ToggleCommand}" />
   </Window.InputBindings>
@@ -51,15 +67,19 @@
                 <local:SessionRing Width="68" Height="68" IsRunning="{Binding IsActive}" Progress="{Binding Progress}" Foreground="{DynamicResource AccentBrush}" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                   <TextBlock Text="{Binding RemainingText}" FontSize="30" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding EndText}" FontSize="12" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,3,0,0"
+                             Visibility="{Binding IsFiniteActive, Converter={StaticResource BoolVisibility}}" />
                   <TextBlock Text="{Binding SceneStatusText}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,5,0,0" />
                   <TextBlock Text="{Binding ConfigurationText}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,5,0,0" />
                 </StackPanel>
               </Grid>
+              <TextBlock Text="{Binding LastResultText}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,-8,0,14"
+                         Visibility="{Binding ShowLastResult, Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="上次运行结果" />
               <UniformGrid Columns="4" IsEnabled="{Binding CanEdit}" Margin="0,0,0,14">
-                <Button Content="日常" Command="{Binding DailyCommand}" Padding="6,12" Margin="0,0,5,0" ToolTip="1小时，仅接电，允许熄屏" />
-                <Button Content="夜间" Command="{Binding NightCommand}" Padding="6,12" Margin="0,0,5,0" ToolTip="8小时，仅接电，夜间柔光" />
-                <Button Content="接电合盖" Command="{Binding LidCommand}" Padding="3,12" Margin="0,0,5,0" ToolTip="此预览暂不支持合盖" />
-                <Button Content="有网时" Command="{Binding NetworkCommand}" Padding="6,12" ToolTip="2小时，电池合盖，断网停止；此预览暂不支持" />
+                <Button Content="日常" Command="{Binding DailyCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsDailyScene}" ToolTip="1 小时 · 开盖 · 仅接电 · 自动熄屏" />
+                <Button Content="夜间" Command="{Binding NightCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsNightScene}" ToolTip="8 小时 · 开盖 · 仅接电 · 夜间柔光" />
+                <Button Content="接电合盖" Command="{Binding LidCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsLidScene}" ToolTip="直到手动停止 · 合盖 · 仅接电；此预览暂不支持合盖" />
+                <Button Content="有网时" Command="{Binding NetworkCommand}" Style="{StaticResource SceneButton}" Tag="{Binding IsNetworkScene}" Margin="0" ToolTip="2 小时 · 合盖 · 允许电池 · 断网停止；此预览暂不支持" />
               </UniformGrid>
               <Border Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="16">
                 <StackPanel IsEnabled="{Binding CanEdit}">

@@ -25,6 +25,7 @@ internal static class Program
             ("release failure blocks restart until explicit recovery", RecoveryFlow),
             ("unchanged idle monitoring publishes no updates", IdleNotifications),
             ("scene parameter edits are visibly customized", CustomizedScene),
+            ("ended session keeps end time and last result visible", LastResultSurvivesSceneChange),
             ("MainWindow XAML loads with real resources and bindings", WindowLoads)
         };
         int failed = 0;
@@ -150,6 +151,16 @@ internal static class Program
     {
         using var f = new Fixture(); f.Model.DailyCommand.Execute(null); f.Model.DurationMinutes = 120;
         Check(f.Model.SceneStatusText.Contains("自定义", StringComparison.Ordinal), f.Model.SceneStatusText);
+    }
+    private static void LastResultSurvivesSceneChange()
+    {
+        using var f = new Fixture(); f.Model.DurationMinutes = 1; f.Model.ToggleCommand.Execute(null);
+        Check(f.Model.EndText.StartsWith("预计", StringComparison.Ordinal) && !f.Model.ShowLastResult, f.Model.EndText);
+        f.Seconds = 60; f.Model.RefreshMonitor();
+        f.Model.NightCommand.Execute(null);
+        Check(f.Model.IsNightScene && !f.Model.IsDailyScene, "scene selection flags did not follow the chosen scene");
+        Check(f.Model.ShowLastResult && f.Model.EndText.Length == 0, "last result hidden or stale end time shown after expiry");
+        Check(f.Model.LastResultText.Contains("运行 1 分钟", StringComparison.Ordinal) && f.Model.LastResultText.Contains("设定时间已到", StringComparison.Ordinal), f.Model.LastResultText);
     }
     private static void WindowLoads()
     {

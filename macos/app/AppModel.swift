@@ -30,6 +30,8 @@ import AwakeShared
     @Published var startedAt: Date?
     @Published var sessionSeconds: Double = 0
     @Published var loginEnabled = false
+    /// Survives scene changes so a returning user can see how the last session ended.
+    @Published var lastResult: String?
     @Published var onboarded: Bool
     private let readSample: () -> PowerSample
     private let readClock: () -> ClockSample
@@ -88,22 +90,47 @@ import AwakeShared
         if let requestHelper { return try await requestHelper(request) }
         return try await client.send(request)
     }
-    private func savePreferences() {
-        guard preferencesReady, let defaults else { return }
+    var preferences: AwakePreferences {
         var value = AwakePreferences()
         value.scene = scene; value.durationMinutes = durationMinutes; value.customMinutes = customMinutes
         value.lidMode = lidMode; value.requireAC = requireAC; value.requireNetwork = requireNetwork
         value.screenMode = screenMode; value.minimumBattery = minimumBattery
         value.dimAmount = dimAmount; value.showCountdown = showCountdown
+        return value
+    }
+    private func savePreferences() {
+        guard preferencesReady, let defaults else { return }
+        let value = preferences
         if value.isValid, let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: "preferences.v1") }
     }
     var statusTitle: String {
         if needsRecovery { return "需要恢复设置" }
         if hasSession && !active { return "正在确认恢复" }
-        if !active { return "随时准备好" }
+        if !active { return readinessTitle }
         if unlimitedSession { return "直到手动停止" }
         let seconds = max(0, Int(ceil(remaining)))
         return String(format: "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+    }
+    /// Idle title says what would block a start instead of a generic ready state.
+    var readinessTitle: String {
+        if lidMode && !helperBuildEnabled { return "此版本不支持合盖" }
+        if lidMode && serviceStatus != .enabled { return "合盖需先批准组件" }
+        if requireAC && sample.onAC == false { return "请接通电源" }
+        return "随时准备好"
+    }
+    /// One line under the title: the promise of the running session, or what a start will request.
+    var statusDetail: String {
+        if active {
+            if unlimitedSession { return "\(scene) · 直到手动停止" }
+            guard let startedAt else { return "\(scene) · 保持运行中" }
+            return "\(scene) · " + SessionText.endTime(startedAt.addingTimeInterval(sessionSeconds), now: readClock().wall)
+        }
+        let value = preferences
+        return "\(scene)\(value.isCustomized ? "（已调整）" : "") · \(value.summary)"
+    }
+    private func recordEnd(_ reason: String) {
+        if let startedAt { lastResult = SessionText.lastResult(start: startedAt, end: readClock().wall, reason: reason) }
+        startedAt = nil
     }
     var sessionProgress: Double { active && !unlimitedSession && sessionSeconds > 0 ? max(0, min(1, remaining / sessionSeconds)) : 1 }
     var thermalDescription: String {
@@ -116,15 +143,9 @@ import AwakeShared
         }
     }
     func chooseScene(_ name: String) {
-        guard !hasSession, !busy else { return }
-        scene = name; lidMode = false; nightMode = false; keepDisplay = false
-        requireAC = true; requireNetwork = false
-        switch name {
-        case "夜间": nightMode = true; durationMinutes = 480
-        case "接电合盖": lidMode = true; durationMinutes = -1
-        case "有网时": lidMode = true; requireAC = false; requireNetwork = true; durationMinutes = 120
-        default: durationMinutes = 60
-        }
+        guard !hasSession, !busy, let preset = ScenePreset.named(name) else { return }
+        scene = preset.name; durationMinutes = preset.durationMinutes; screenMode = preset.screenMode
+        lidMode = preset.lidMode; requireAC = preset.requireAC; requireNetwork = preset.requireNetwork
         message = "未开启"
     }
     func acknowledge() { onboarded = true; defaults?.set(true, forKey: "onboarded") }
@@ -193,7 +214,7 @@ import AwakeShared
             } else {
                 try assertion.start(keepDisplay: keepDisplay || nightMode)
                 idleStart = now; idleDuration = duration; idlePolicy = policy; remaining = idleDuration
-                message = nightMode ? "夜间柔光运行中，停止后恢复画面" : "正在保持运行 · 合盖需开启合盖模式"
+                message = nightMode ? "夜间柔光运行中，停止后恢复画面" : "保持运行中 · 不影响锁屏，请保持开盖"
             }
             startedAt = now.wall; sessionSeconds = duration
             unlimitedSession = duration == 0
@@ -240,6 +261,7 @@ import AwakeShared
                     throw AwakeError.backend(reply.status.error ?? "后台仍有会话或待恢复设置，请先恢复")
                 }
             }
+            if active { recordEnd(StopReason.manual.message) }
             idleStart = nil; active = false; remaining = 0; unlimitedSession = false; needsRecovery = false; startedAt = nil
             message = "已停止本应用保活，设置已恢复"; return true
         } catch {
@@ -284,7 +306,10 @@ import AwakeShared
             if idleDuration > 0 && remaining <= 0 { reason = .expired }
             if abs(now.wall.timeIntervalSince(start.wall) - (now.continuous - start.continuous)) > 60 { reason = .clockChanged }
             if let reason = reason {
-                do { try assertion.stop(); dimmer.stop(); idleStart = nil; active = false; unlimitedSession = false; remaining = 0; message = "已停止：\(reason.message)" }
+                do {
+                    try assertion.stop(); dimmer.stop(); idleStart = nil; active = false; unlimitedSession = false; remaining = 0
+                    message = "已停止：\(reason.message)"; recordEnd(reason.message)
+                }
                 catch { active = false; message = "断言释放失败：\(error.localizedDescription)" }
             }
             return
@@ -316,6 +341,7 @@ import AwakeShared
                     publish(\.message, "合盖设置已就绪 · 合盖前请保持通风")
                 } else { publish(\.active, false); publish(\.message, "后台有其他会话，等待结束或恢复") }
             } else {
+                if leaseID != nil { recordEnd(reply.status.stopReason?.message ?? "后台会话已结束") }
                 publish(\.active, false); leaseID = nil; publish(\.remaining, 0); publish(\.unlimitedSession, false)
                 dimmer.stop(); try assertion.stop()
                 publish(\.needsRecovery, reply.status.phase == .recoveryRequired)
