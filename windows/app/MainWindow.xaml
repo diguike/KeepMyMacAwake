@@ -38,7 +38,7 @@
         <TextBlock Text="{Binding PhaseText}" FontSize="11" AutomationProperties.LiveSetting="Polite" />
       </Border>
     </Grid>
-    <TextBlock DockPanel.Dock="Bottom" Text="Windows 开发预览 · 0.3.0" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,10,0,0" />
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding VersionText}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,10,0,0" />
     <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
       <StackPanel>
         <Button Content="{Binding ActionText}" Command="{Binding ToggleCommand}" Background="{DynamicResource AccentBrush}"

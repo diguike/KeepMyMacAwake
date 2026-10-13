@@ -78,6 +78,8 @@ dotnet run --project windows/app/Awake.App.csproj -c Release
 
 Mac 已验证可交叉生成 Windows x64 / ARM64 ZIP，并通过 NSIS 生成当前用户图形安装器：打完 ZIP 后运行 `./scripts/build-windows-installer.sh`。具体工具链、命令和 Windows 验证边界见 [Mac 双端工作流](docs/mac-windows-workflow.md)。安装器仍是未签名开发预览，实际安装/卸载待 Windows 验收。
 
+GitHub 的 CI 提供 Windows x64 / ARM64 测试、EXE/ZIP 打包、校验文件与界面报告；合入 main 后可在 Actions → CI → Run workflow 手动生成预览。报告下载后在 Mac 打开 ui/index.html，无需本地 Windows。操作入口与证据边界见 [GitHub 打包说明](docs/github-windows-build.md)，实际执行结果见 status.md。
+
 ## Linux 上验证
 
 安装 Swift 5.9+ 后运行：

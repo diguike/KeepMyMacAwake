@@ -203,3 +203,11 @@ Windows：执行 14 项 WPF 注入检查；实际主题、通知、首次关窗�
 Mac：实际系统通知投递未验收；本轮使用默认关闭与注入回调验证授权/发送逻辑。物理合盖、多屏/Space/全屏组合、完整 helper 故障恢复矩阵与公证仍按既有交接完成。本轮没有全局 pmset 写入、helper 注册或物理合盖操作。
 
 下一步讨论采用 Windows 11 ARM 虚拟机还是远程/物理 Windows 环境，按 mac-windows-workflow.md 接续；Windows 虚拟机不能代替笔记本物理合盖。新代码没有远端 CI；本轮按用户要求先保留本地代码和产物。
+
+## 2026-10-14：GitHub Windows 流程（执行中）
+
+用户已明确选择优先用 GitHub 完成 Windows 测试、打包和界面报告，本地 Windows 环境后续再调研。已新增双架构 CI、手动 windows/all 入口、Windows NSIS PowerShell 打包与包核验、临时主机安装器生命周期检查，以及 63 张真实 WPF 控件渲染图片/HTML/JSON 报告。应用和报告复用主题资源；Windows 页脚改读实际版本，修复原先硬编码 0.3.0。
+
+本机检查：7 个 .NET 项目交叉构建 0 警告/0 错误；核心 39 项、协议/请求模拟 27 项通过；workflow YAML 解析与空白检查通过。WPF 渲染和 PowerShell/NSIS/安装器生命周期等待 GitHub 实际执行，不以本地编译代替。Mac 源码未再修改，前一轮 61 项本机结果保留，推送后 CI 将做双端回归。
+
+操作说明见 github-windows-build.md。实际运行、修复和下载回执将在完成后补充；尚未创建 Release，也没有安装本地 Windows 环境。

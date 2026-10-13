@@ -102,6 +102,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public string PhaseText => NeedsRecovery ? "待恢复" : IsActive ? "运行中" : "待机";
     public string ActionText => IsActive ? "停止保活" : "开始保活";
     public string Message => message;
+    public string VersionText => "Windows 开发预览 · " + typeof(MainViewModel).Assembly.GetName().Version?.ToString(3);
     public string HistoryNotice => historyNotice ?? "";
     public string RemainingText => IsActive ? session.RemainingSeconds is null ? "直到手动停止" : FormatRemaining(session.RemainingSeconds.Value)
         : NeedsRecovery ? "等待恢复" : preferences.LidMode ? "合盖尚未开放" : !preferences.RequireAC ? "电池尚未开放" : sample.OnAC != true ? "请接通电源" : "尚未开启";

@@ -9,7 +9,7 @@ namespace Awake.App.Tests;
 internal static class Program
 {
     [STAThread]
-    private static int Main()
+    private static int Main(string[] args)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("WPF integration checks require Windows");
         var application = new global::Awake.App.App();
@@ -31,13 +31,19 @@ internal static class Program
             ("installer waits for exit and refuses an unconfirmed shutdown", InstallerHandoff),
             ("MainWindow XAML loads with real resources and bindings", WindowLoads)
         };
+        string? reportDirectory = args.Length == 2 && args[0] == "--report-dir" ? args[1] : null;
+        if (args.Length != 0 && reportDirectory is null) throw new ArgumentException("Usage: Awake.App.Tests [--report-dir PATH]");
+        var results = new List<CheckResult>();
         int failed = 0;
         foreach (var (name, run) in tests)
         {
-            try { run(); Console.WriteLine("PASS " + name); }
-            catch (Exception error) { failed++; Console.Error.WriteLine("FAIL " + name + "\n" + error); }
+            try { run(); results.Add(new(name, true, null)); Console.WriteLine("PASS " + name); }
+            catch (Exception error) { failed++; results.Add(new(name, false, error.Message)); Console.Error.WriteLine("FAIL " + name + "\n" + error); }
         }
         Console.WriteLine($"WPF integration checks: {tests.Length - failed} passed, {failed} failed");
+        if (reportDirectory is not null)
+            try { UiReport.Write(reportDirectory, results); }
+            catch (Exception error) { failed++; Console.Error.WriteLine("FAIL WPF preview report\n" + error); }
         application.Shutdown();
         return failed == 0 ? 0 : 1;
     }
