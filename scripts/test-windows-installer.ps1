@@ -13,6 +13,8 @@ $registration = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepM
 $startupKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $startupName = 'KeepMyMacAwake.Windows'
 $checks = [Collections.Generic.List[string]]::new()
+$runningApp = $null
+$preferences = Join-Path $env:LOCALAPPDATA 'KeepMyMacAwake/windows/preferences.json'
 function Invoke-Bounded([string]$Path, [string]$Arguments) {
     $process = Start-Process -FilePath $Path -ArgumentList $Arguments -PassThru
     if (-not $process.WaitForExit(60000)) {
@@ -45,8 +47,16 @@ try {
     $checks.Add('Packaged updater executes and exits without starting a power session')
     New-Item -Path $startupKey -Force | Out-Null
     New-ItemProperty -Path $startupKey -Name $startupName -Value ('"' + $executable + '" --startup') -PropertyType String -Force | Out-Null
+    if (Test-Path $preferences) { throw 'Unexpected existing preferences in CI profile' }
+    New-Item -ItemType Directory -Path (Split-Path $preferences -Parent) -Force | Out-Null
+    # Start the packaged app silently in an acknowledged, idle state.
+    Set-Content $preferences '{"Preferences":{},"HasOnboarded":true}' -Encoding utf8
+    $runningApp = Start-Process -FilePath $executable -ArgumentList '--startup' -PassThru
+    if (-not $runningApp.WaitForInputIdle(10000) -or $runningApp.HasExited) { throw 'Packaged app did not reach idle startup' }
     Install-Preview
-    $checks.Add('Silent upgrade confirms the packaged updater before replacing files')
+    if (-not $runningApp.WaitForExit(10000)) { throw 'Upgrade did not stop the running idle app' }
+    if ($runningApp.ExitCode -ne 0) { throw 'Packaged app failed during startup/upgrade exit' }
+    $checks.Add('Silent upgrade stops the running idle app through the real updater handoff')
     $kept = Join-Path $installation 'user-kept.txt'
     Set-Content $kept 'Synthetic CI file that the package must preserve'
     Uninstall-Preview
@@ -71,6 +81,8 @@ try {
     Write-Host "$($checks.Count) installer lifecycle smoke checks passed on $Runtime."
 }
 finally {
+    if ($runningApp -and -not $runningApp.HasExited) { $runningApp.Kill(); $runningApp.WaitForExit() }
+    Remove-Item -LiteralPath $preferences -Force -ErrorAction SilentlyContinue
     if ((Get-ItemProperty $startupKey -Name $startupName -ErrorAction SilentlyContinue)) { Remove-ItemProperty $startupKey -Name $startupName -ErrorAction SilentlyContinue }
     if (Test-Path $installation) { Remove-Item -LiteralPath $installation -Recurse -Force -ErrorAction SilentlyContinue }
 }
