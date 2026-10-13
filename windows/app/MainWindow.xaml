@@ -1,0 +1,124 @@
+<Window x:Class="Awake.App.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:Awake.App"
+        Title="KeepMyMacAwake · Windows" Width="500" Height="800" MinWidth="440" MinHeight="560"
+        Background="{DynamicResource PageBrush}" FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="13"
+        WindowStartupLocation="CenterScreen" Closing="WindowClosing">
+  <Window.InputBindings>
+    <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding ToggleCommand}" />
+  </Window.InputBindings>
+  <DockPanel Margin="24,20,24,12">
+    <Grid DockPanel.Dock="Top" Margin="0,0,0,20">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Border Width="44" Height="44" Background="{DynamicResource CardBrush}" CornerRadius="12" Margin="0,0,12,0">
+        <Viewbox Margin="10"><Canvas Width="32" Height="32">
+          <Path Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" Data="M 5,12 L 23,12 L 23,21 Q 23,27 14,27 Q 5,27 5,21 Z M 23,14 L 27,14 Q 31,19 23,21 M 3,29 L 26,29 M 10,9 Q 7,6 10,3 M 17,9 Q 14,6 17,3" />
+        </Canvas></Viewbox>
+      </Border>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center">
+        <TextBlock Text="KeepMyMacAwake" FontSize="19" FontWeight="SemiBold" />
+        <TextBlock Text="工作继续，安心休息。" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,4,0,0" />
+      </StackPanel>
+      <Border Grid.Column="2" Background="{DynamicResource CardBrush}" CornerRadius="10" Padding="10,6" VerticalAlignment="Center">
+        <TextBlock Text="{Binding PhaseText}" FontSize="11" AutomationProperties.LiveSetting="Polite" />
+      </Border>
+    </Grid>
+    <TextBlock DockPanel.Dock="Bottom" Text="Windows 开发预览 · 0.3.0" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,10,0,0" />
+    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+      <StackPanel>
+        <Button Content="{Binding ActionText}" Command="{Binding ToggleCommand}" Background="{DynamicResource AccentBrush}"
+                Foreground="{DynamicResource AccentTextBrush}" FontWeight="SemiBold" FontSize="15" MinHeight="46"
+                AutomationProperties.Name="开始或停止保活" ToolTip="Ctrl+Enter" />
+        <Button Content="再加 15 分钟" Command="{Binding ExtendCommand}" Visibility="{Binding IsFiniteActive, Converter={StaticResource BoolVisibility}}" />
+        <Button Content="恢复保活状态" Command="{Binding RecoverCommand}" Visibility="{Binding NeedsRecovery, Converter={StaticResource BoolVisibility}}" />
+        <TextBlock Text="{Binding Message}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,5,0,0" AutomationProperties.LiveSetting="Polite" />
+      </StackPanel>
+    </Border>
+    <Grid>
+      <StackPanel Visibility="{Binding ShowWelcome, Converter={StaticResource BoolVisibility}}" Margin="4,24,4,0">
+        <TextBlock Text="把长任务留给电脑。&#10;把时间留给自己。" FontSize="30" FontWeight="SemiBold" Margin="0,0,0,20" />
+        <TextBlock Text="让你已经启动的 AI 任务、构建和下载继续运行。设定时长，离开时可以让屏幕关闭。" Foreground="{DynamicResource MutedBrush}" LineHeight="24" />
+        <Border Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="16" Margin="0,22,0,22">
+          <TextBlock Text="此预览支持接电、开盖保活。&#10;合盖与电池保活尚未开放，应用热保护不可用。&#10;不改变锁屏规则，不自动判断任务完成。" LineHeight="24" />
+        </Border>
+        <Button Content="开始使用" Command="{Binding OnboardCommand}" Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource AccentTextBrush}" />
+      </StackPanel>
+      <TabControl Visibility="{Binding HasOnboarded, Converter={StaticResource BoolVisibility}}" Background="{DynamicResource PageBrush}" BorderThickness="0">
+        <TabItem Header="保活">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,12,6,12">
+            <StackPanel>
+              <Grid Margin="0,8,0,20">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="84" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                <local:SessionRing Width="68" Height="68" IsRunning="{Binding IsActive}" Progress="{Binding Progress}" Foreground="{DynamicResource AccentBrush}" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding RemainingText}" FontSize="30" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding SceneStatusText}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,5,0,0" />
+                  <TextBlock Text="{Binding ConfigurationText}" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,5,0,0" />
+                </StackPanel>
+              </Grid>
+              <UniformGrid Columns="4" IsEnabled="{Binding CanEdit}" Margin="0,0,0,14">
+                <Button Content="日常" Command="{Binding DailyCommand}" Padding="6,12" Margin="0,0,5,0" ToolTip="1小时，仅接电，允许熄屏" />
+                <Button Content="夜间" Command="{Binding NightCommand}" Padding="6,12" Margin="0,0,5,0" ToolTip="8小时，仅接电，夜间柔光" />
+                <Button Content="接电合盖" Command="{Binding LidCommand}" Padding="3,12" Margin="0,0,5,0" ToolTip="此预览暂不支持合盖" />
+                <Button Content="有网时" Command="{Binding NetworkCommand}" Padding="6,12" ToolTip="2小时，电池合盖，断网停止；此预览暂不支持" />
+              </UniformGrid>
+              <Border Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="16">
+                <StackPanel IsEnabled="{Binding CanEdit}">
+                  <TextBlock Text="持续时间" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                  <ComboBox ItemsSource="{Binding Durations}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding DurationMinutes}" AutomationProperties.Name="持续时间" />
+                  <StackPanel Visibility="{Binding IsCustomDuration, Converter={StaticResource BoolVisibility}}" Margin="0,6,0,8">
+                    <TextBlock Text="自定义分钟（1–1440）" FontSize="11" Margin="0,0,0,5" />
+                    <TextBox Text="{Binding CustomMinutesText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="自定义分钟" />
+                  </StackPanel>
+                  <Separator Margin="0,10" />
+                  <TextBlock Text="屏幕" Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+                  <ComboBox ItemsSource="{Binding Screens}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding ScreenMode}" AutomationProperties.Name="屏幕模式" />
+                  <StackPanel Visibility="{Binding IsNightDim, Converter={StaticResource BoolVisibility}}">
+                    <Slider Minimum="0.8" Maximum="0.98" Value="{Binding DimAmount}" AutomationProperties.Name="夜间画面变暗程度" Margin="0,10,0,6" />
+                    <TextBlock Text="{Binding DimText}" FontSize="10" Foreground="{DynamicResource MutedBrush}" />
+                    <TextBlock Text="临时画面遮罩，非硬件背光调节。在控制窗口按 Esc 或点击停止可撤销，托盘仍可操作。" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" />
+                    <TextBlock Text="柔光保持屏幕亮起；锁屏时撤下遮罩，解锁后按会话状态恢复。" FontSize="10" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0" />
+                  </StackPanel>
+                  <Separator Margin="0,10" />
+                  <CheckBox Content="合盖继续运行" IsChecked="{Binding LidMode}" />
+                  <CheckBox Content="仅接通电源时保活" IsChecked="{Binding RequireAC}" />
+                  <CheckBox Content="断网时停止" IsChecked="{Binding RequireNetwork}" />
+                </StackPanel>
+              </Border>
+              <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="12" Padding="12" Margin="0,12,0,0">
+                <StackPanel>
+                  <TextBlock Text="{Binding CapabilityText}" FontSize="11" />
+                  <TextBlock Text="保护：拔电时停止 · 应用热保护不可用" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0" />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="{Binding TelemetryText}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,14,0,0" />
+              <TextBlock Text="网络表示系统路径，不保证互联网或任务服务可达。" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,5,0,0" />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+        <TabItem Header="设置">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,18,6,12">
+            <StackPanel>
+              <TextBlock Text="按你的习惯。" FontSize="26" Margin="0,4,0,18" />
+              <Border Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="16">
+                <StackPanel>
+                  <CheckBox Content="登录时启动（启动后保持待机）" IsChecked="{Binding LoginEnabled}" />
+                  <CheckBox Content="托盘显示剩余时间" IsChecked="{Binding ShowCountdown}" />
+                  <TextBlock Text="电量保护下限（10–80%）" FontSize="11" Margin="0,12,0,5" />
+                  <TextBox Text="{Binding MinimumBatteryText, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEdit}" AutomationProperties.Name="电量保护下限" />
+                  <TextBlock Text="此预览暂不开放电池保活；保留该设置供后续使用。" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="0,6,0,0" />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="使用边界" FontWeight="SemiBold" Margin="0,24,0,8" />
+              <TextBlock Text="接电、开盖，在通风桌面上使用。此预览没有应用热监控，不能判断电脑是否放在包里。保活不会防止手动睡眠、系统重启、网络故障或 AI 等待输入。" Foreground="{DynamicResource MutedBrush}" LineHeight="23" />
+              <TextBlock Text="合盖后台组件" FontWeight="SemiBold" Margin="0,24,0,8" />
+              <TextBlock Text="尚未开放。此预览无需管理员权限，也不会安装系统服务或修改合盖设置。" Foreground="{DynamicResource MutedBrush}" LineHeight="23" />
+              <TextBlock Text="退出与移除" FontWeight="SemiBold" Margin="0,24,0,8" />
+              <TextBlock Text="关闭窗口会留在托盘；需要退出时请使用托盘菜单或下方按钮。移除前关闭登录启动并退出，再删除解压目录。" Foreground="{DynamicResource MutedBrush}" LineHeight="23" />
+              <Button Content="停止并退出" Click="ExitClicked" Margin="0,20,0,0" />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+      </TabControl>
+    </Grid>
+  </DockPanel>
+</Window>

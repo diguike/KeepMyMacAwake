@@ -1,6 +1,6 @@
 # 项目进度与下一会话入口
 
-更新：2026-10-11，0.2.1 UI 刷新修复。最新验证见文末；0.2.0 记录保留为历史证据。用户明确授权开发、安装、组件注册及验证后推送和合入 main。
+更新：2026-10-13，服务器 Windows 开发预览与双端仓库重构。最新验证见文末；0.2.0 / 0.2.1 Mac 记录保留为历史证据。用户明确授权开发、安装、组件注册及验证后推送和合入 main；本轮系统服务安装与真机行为留待本地。
 
 ## 已实现并安装
 
@@ -83,3 +83,44 @@ CI 首轮发现旧 Swift 对屏幕变更回调弱引用捕获的并发检查差�
 [v0.2.1 Pre-release](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.2.1) 已于 2026-10-11 10:04（Asia/Singapore）公开，tag 指向 `9e6de89`。DMG、ZIP 与 SHA256SUMS.txt 上传后回下载校验通过；安装版与下载包使用同次构建。仍是 Apple Development 签名、未公证的体验包。
 
 上述回归验证了发现的触发路径；用户具体看到的刷新形态尚未补充。物理合盖与多屏／Space／全屏切换矩阵仍待人工验收，不将模拟时钟、XPC 回复或屏幕通知计作物理验证。
+
+## 2026-10-13：Windows 与双端体验方案
+
+已在 Linux 工作区通过 `git pull --ff-only` 同步 main 至 `ebb1cfc`（0.2.1 文档交付提交）。用户反馈曾使用应用完成离线及联网夜间任务；未提供该体验的机型、模式、时长与提交号，不将反馈计入物理合盖验收矩阵。
+
+用户希望宣传时 Windows 用户也能使用，并要求两端尽量接近；本轮明确选择先定双端方案。新增 [windows-plan.md](windows-plan.md)：统一场景、计时、屏幕模式、保护与状态语义，建议 Windows 原生 C# / WPF、独立合盖恢复服务与同仓库组织，并列出能力差异和阶段验收标准。Windows 名称与技术栈是建议，尚未开始编码。
+
+本轮检查：阅读当前场景实现，查阅微软官方电源与 WPF 文档；文档修改运行 `git diff --check`。未修改源码，不运行 Swift 回归；本环境为 Linux，未执行 Windows 构建、API、服务安装或真机验证。没有 Windows 下载包，没有提交、推送或发布。
+
+下一步：用户确定进入开发后，建立普通保活预览，同时验证 Windows 合盖设置恢复、Modern Standby 电池限制和可靠热遥测。未满足保护与恢复门槛的合盖能力保持关闭；双端宣传按实际交付与机型支持范围表述。
+
+## 2026-10-13：服务器开发、产品评审与结构重构
+
+用户后续明确授权服务器实现 Windows 开发、重构整个项目结构，并允许产品经理与实现 Agent 并行评审/开发；依赖电脑的部分留待本地。名称讨论延期，继续使用 KeepMyMacAwake，Windows 标明平台。核心用途为 AI 长任务在用户离开、合盖或夜间休息时继续运行，不自动判断或保证完成。
+
+### 本轮已实现
+
+- 单仓库 `macos/` / `windows/` / `specs/`：Mac 现有源文件、测试、packaging 逐字节与原 main 一致，仅搬路径。根 Package.swift 和 Mac build/release/notarize 脚本兼容入口保留；bundle/helper ID、协议、签名要求与 dist 产物路径不变。
+- Windows .NET 10 / WPF 控制窗口与系统托盘：首用说明、保活/设置、同名场景、时长、自定义、无限时、15分钟续时、屏幕模式、柔光、参数保存、登录启动；关闭留托盘，二次启动打开原实例。普通 App asInvoker。
+- Windows PowerRequest 真实后端源码，系统/显示请求分开；不会通过续时重复计数；部分申请失败仍清理资源，clear失败仍关闭句柄。供电、电量、NLM网络路径与含休眠时间的时钟源码；热状态始终未知。
+- 会话计时、保护停止、时钟跳变、恢复状态、不自动重启规则；系统睡眠/恢复后停止。UI不沿用旧失败原因、不误报合盖就绪；自定义场景展示实际参数，24小时显示总小时，空闲不重复发布未变化状态。
+- 合盖事务、write-ahead恢复与20秒失联租约、固定PowrProf设置API、受保护记录与受限服务源码。服务生产签名和可信安装未完成，入口硬拒绝启动；合盖/电池能力关闭，不进入普通用户ZIP，不提供安装入口。
+- 共享四场景、九行为JSON合约与Swift/C#验证；Windows注入WPF检查覆盖10项命令、错误、到期、恢复、通知与XAML加载。
+- 双端CI、Windows自包含ZIP打包脚本、安装说明和 [Windows交接](windows-handoff.md)。[产品评审](product-review-windows.md) 的旧错误覆盖、场景误导、托盘首次启用和24小时显示问题已按源码修正，原生验收仍独立保留。
+
+### 服务器实际检查
+
+环境：Ubuntu 20.04 x86_64；.NET SDK 10.0.401（运行时10.0.12），位于 `/tmp/keepmymacawake-toolchain/dotnet`。原服务器没有Swift，使用官方Swift 6.0.3镜像执行纯逻辑测试，未安装Mac SDK。
+
+- Swift `swift test`：Docker隔离构建，34项XCTest全部通过（原32项加2项共享合约）。不执行Mac原生测试。
+- Windows核心 `dotnet test windows/tests/Awake.Core.Tests.csproj -c Release`：30项通过，无跳过。
+- `dotnet run --project windows/service-tests/Awake.Service.Tests.csproj -c Release`：27项协议、ABI和native-request模拟检查通过；不调用Windows API。
+- `dotnet build windows/KeepMyMacAwake.slnx -c Release`：7个项目构建成功，0警告、0错误，包含WPF与服务源码。10项WPF注入检查本机仅编译，不在Linux执行。
+- `scripts/build-windows.sh`：实际交叉publish win-x64自包含App，生成未签名ZIP与SHA256；服务只编译，不进包。第一次打包遇到服务器Python3.8不支持removeprefix，已改兼容写法并成功重跑。
+- Mac搬迁文件逐字节核对；shell语法、JSON/XML/XAML结构与 `git diff --check` 通过。当前本机没有macOS，不直接验证Mac打包与签名。
+
+### 能力与待本地事项
+
+Windows普通预览只开放接电开盖，明确无应用热保护。合盖、电池、签名安装/卸载与可部署恢复服务未完成；不能把内部算法或模拟测试称为系统级恢复已可用。原生PowerRequest、锁屏、柔光多屏/DPI、睡眠通知、强杀请求释放、实际夜间长跑仍需Windows真机验收。
+
+没有发布Windows Release，没有安装系统服务，没有修改真实机器电源设置。Windows现有包用于本地开发交接；Mac仍保持0.2.1体验版。下一步先按windows-handoff.md做普通模式验收，再完善服务信任与恢复矩阵，验证热保护和Modern Standby边界。

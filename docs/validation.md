@@ -1,5 +1,7 @@
 # 验证与本地 Mac 交接计划
 
+2026-10-13 新增 Windows 与双端合约。Windows 实际验证以 status.md 为准，本地矩阵见 [windows-handoff.md](windows-handoff.md)。`specs/` 测试、Linux 模拟 API 检查、Windows WPF 注入检查与真实电源/合盖行为分别计数，不互相代替。
+
 Linux 已执行纯逻辑与恢复文件测试；所有物理 Mac 场景仍待执行。具体结果见 status.md，操作顺序见 mac-handoff.md。
 
 ## 环境边界

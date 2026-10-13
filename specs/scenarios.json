@@ -1,0 +1,11 @@
+[
+  {"name":"finite-expiry","durationMinutes":1,"requireNetwork":false,"tickSeconds":60,"wallSeconds":60,"onAC":true,"network":true,"thermal":"nominal","reason":"expired"},
+  {"name":"infinite-survives","durationMinutes":0,"requireNetwork":false,"tickSeconds":10000,"wallSeconds":10000,"onAC":true,"network":true,"thermal":"nominal","reason":null},
+  {"name":"unplug","durationMinutes":60,"requireNetwork":false,"tickSeconds":1,"wallSeconds":1,"onAC":false,"network":true,"thermal":"nominal","reason":"powerDisconnected"},
+  {"name":"network-stop","durationMinutes":60,"requireNetwork":true,"tickSeconds":1,"wallSeconds":1,"onAC":true,"network":false,"thermal":"nominal","reason":"networkDisconnected"},
+  {"name":"network-unknown","durationMinutes":60,"requireNetwork":true,"tickSeconds":1,"wallSeconds":1,"onAC":true,"network":null,"thermal":"nominal","reason":"telemetryUnknown"},
+  {"name":"critical-stop","durationMinutes":60,"requireNetwork":false,"tickSeconds":1,"wallSeconds":1,"onAC":true,"network":true,"thermal":"critical","reason":"thermalCritical"},
+  {"name":"clock-jump","durationMinutes":60,"requireNetwork":false,"tickSeconds":1,"wallSeconds":62,"onAC":true,"network":true,"thermal":"nominal","reason":"clockChanged"},
+  {"name":"clock-backward","durationMinutes":60,"requireNetwork":false,"tickSeconds":-1,"wallSeconds":-1,"onAC":true,"network":true,"thermal":"nominal","reason":"clockChanged"},
+  {"name":"thermal-unknown","durationMinutes":60,"requireNetwork":false,"tickSeconds":1,"wallSeconds":1,"onAC":true,"network":true,"thermal":"unknown","reason":"telemetryUnknown"}
+]

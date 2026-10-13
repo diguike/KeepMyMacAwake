@@ -2,6 +2,8 @@
 
 原生 macOS 菜单栏应用：**合盖继续运行，到时恢复休眠。**
 
+现扩展为同仓库的 Mac / Windows 原生客户端，名字暂保留 KeepMyMacAwake。核心用途：让已启动的 AI 长任务在你离开或休息时继续运行。Mac 体验版仍为 0.2.1；Windows 0.3.0 为服务器开发预览，支持范围与验证证据分别记录。
+
 由 [递归客](https://github.com/diguike) 开源，MIT 许可证。
 
 当前是 **0.2.1 本机体验版**：修复后台轮询导致按钮周期性闪动、未变化的状态重复刷新，以及屏幕通知重建夜间遮罩的问题。保留场景、永久保活、夜间柔光、续时和设置保存。2026-10-11 在 Mac 本机通过 49 项测试（含 17 项原生验证）；具体证据和远端 CI 见 [实际进度](docs/status.md)。合盖组件需要目标 Mac 本人批准，物理合盖仍待验收。本机使用 Apple Development 签名，尚未公证。
@@ -51,6 +53,27 @@ CONFIGURATION=release SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' ./sc
 
 签名和公证脚本见 [分发说明](docs/distribution.md)。仓库不包含任何签名证书或凭据。
 
+## Windows 开发预览
+
+WPF 控制窗口与系统托盘、日常 / 夜间场景、定时 / 无限时 / 加 15 分钟、屏幕模式、断网停止、偏好及登录启动已实现源码。普通保活采用公开 PowerRequest，不模拟键鼠、不改变锁屏策略。
+
+**此预览只开放接电、开盖保活；合盖和电池保活关闭，应用热保护不可用。** 合盖恢复逻辑、固定设置后端和受限服务源码已准备；后台服务缺少可信安装和签名身份验收，入口硬拒绝启动，不进入用户 ZIP。首次打开显示边界，未支持场景不会静默降级。
+
+服务器可运行 Windows 纯逻辑 / 模拟检查并跨编译 WPF。Linux 编译成功不证明真实锁屏、熄屏、夜间长跑或合盖行为；Windows 本地验收见 [Windows 交接](docs/windows-handoff.md)。当前没有公开 Windows Release。
+
+开发要求 .NET 10 SDK。Windows 上运行：
+
+```powershell
+dotnet build windows/KeepMyMacAwake.slnx -c Release
+dotnet test windows/tests/Awake.Core.Tests.csproj -c Release
+dotnet run --project windows/service-tests/Awake.Service.Tests.csproj -c Release
+dotnet run --project windows/app-tests/Awake.App.Tests.csproj -c Release
+dotnet run --project windows/app/Awake.App.csproj -c Release
+./scripts/build-windows.ps1
+```
+
+最后一步生成自包含、未签名体验 ZIP，普通用户解压后双击 `KeepMyMacAwake.Windows.exe`，不需要安装 SDK。服务器使用 `./scripts/build-windows.sh` 交叉打包；`.NET` 路径可通过 `AWAKE_DOTNET` 指定。不会自动安装服务或发布产物。
+
 ## Linux 上验证
 
 安装 Swift 5.9+ 后运行：
@@ -59,19 +82,22 @@ CONFIGURATION=release SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' ./sc
 swift test
 ```
 
-Linux 只构建纯逻辑库及测试，不构建 SwiftUI、IOKit、XPC 或 ServiceManagement。测试使用模拟电源后端，不能证明实际合盖工作或真实崩溃恢复。CI 在 Linux 跑逻辑测试，在 macOS 编译 App/helper 和打包预览。
+该 Swift 命令只构建 Mac 可移植逻辑及测试，不构建 SwiftUI、IOKit、XPC 或 ServiceManagement。测试使用模拟电源后端，不能证明实际合盖工作或真实崩溃恢复。Windows 的 `dotnet test windows/tests/Awake.Core.Tests.csproj` 和 `dotnet run --project windows/service-tests/Awake.Service.Tests.csproj` 也可在 Linux 执行，不调用 Windows 电源 API。
 
 ## 源码
 
 | 目录 | 内容 |
 | --- | --- |
-| `app/` | SwiftUI 菜单栏、状态协调、IOPMAssertion、授权与网络路径 |
-| `core/` | 租约、保护策略、持久化恢复记录；可在 Linux 测试 |
-| `helper/` | 独立 root XPC 服务、固定 pmset 后端、监控和恢复 |
-| `shared/` | 版本化协议、Mac 遥测、签名校验 |
-| `packaging/` | App / LaunchDaemon 配置 |
-| `scripts/` | 构建、签名与公证 |
-| `tests/` | 故障注入与状态转换测试 |
+| `macos/` | 原有 App、core、helper、shared、tests、native-tests、packaging 与平台脚本 |
+| `windows/app/` | WPF 控制窗口、系统托盘、柔光、偏好与登录启动 |
+| `windows/core/` | 场景、会话、保护、合盖恢复与独立租约逻辑 |
+| `windows/platform/` | PowerRequest、Windows 采样与固定合盖设置后端 |
+| `windows/service/` | 被安全门槛禁用的恢复服务源码；不能安装或运行 |
+| `windows/tests/` / `service-tests/` / `app-tests/` | 核心、模拟请求及 Windows WPF 注入集成检查 |
+| `specs/` | 两端共用场景与行为测试数据 |
+| `scripts/` | 保留 Mac 兼容入口，增加 Windows 构建打包入口 |
+
+根目录 `Package.swift` 保持 `swift test` / `open Package.swift` 入口。Mac bundle ID、helper 名称、协议、签名要求和构建产物位置没有改名。
 
 ## 使用边界与卸载
 
@@ -84,5 +110,7 @@ Linux 只构建纯逻辑库及测试，不构建 SwiftUI、IOKit、XPC 或 Servi
 ## 文档
 
 [进度与待验证项](docs/status.md) · [Mac 交接](docs/mac-handoff.md) · [技术设计](docs/architecture.md) · [验证矩阵](docs/validation.md) · [产品范围](docs/product.md) · [决策](docs/decisions.md) · [研究](docs/research.md) · [资料](docs/references.md)
+
+Windows 的体验对齐、产品评审和本地接续见 [双端方案](docs/windows-plan.md) · [产品评审](docs/product-review-windows.md) · [Windows 交接](docs/windows-handoff.md)。
 
 参与开发前请读 [AGENTS.md](AGENTS.md) 和 [CONTRIBUTING.md](CONTRIBUTING.md)。
