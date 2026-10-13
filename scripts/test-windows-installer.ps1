@@ -1,6 +1,6 @@
 param([ValidateSet('win-x64', 'win-arm64')][string]$Runtime = 'win-x64')
 $ErrorActionPreference = 'Stop'
-if ($env:GITHUB_ACTIONS -ne 'true' -or -not $env:RUNNER_TEMP) { throw 'This registry/install smoke check is only for disposable GitHub-hosted Windows jobs.' }
+if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or -not $env:RUNNER_TEMP) { throw 'This registry/install smoke check is only for disposable GitHub-hosted Windows jobs.' }
 Set-Location (Split-Path $PSScriptRoot -Parent)
 [xml]$project = Get-Content 'windows/app/Awake.App.csproj'
 $version = [string]$project.Project.PropertyGroup.Version
@@ -14,6 +14,8 @@ $startupKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $startupName = 'KeepMyMacAwake.Windows'
 $checks = [Collections.Generic.List[string]]::new()
 $runningApp = $null
+$createdPreferences = $false
+$touchedStartup = $false
 $preferences = Join-Path $env:LOCALAPPDATA 'KeepMyMacAwake/windows/preferences.json'
 function Invoke-Bounded([string]$Path, [string]$Arguments) {
     $process = Start-Process -FilePath $Path -ArgumentList $Arguments -PassThru
@@ -41,16 +43,19 @@ function Uninstall-Preview {
 }
 try {
     if (Test-Path $registration) { throw 'Unexpected existing installation in CI profile' }
+    if (Get-ItemProperty $startupKey -Name $startupName -ErrorAction SilentlyContinue) { throw 'Unexpected existing startup entry in CI profile' }
     Install-Preview
     $checks.Add('Silent installation to a path containing spaces; app/hash/uninstall registration')
     Invoke-Bounded $executable '--prepare-update'
     $checks.Add('Packaged updater executes and exits without starting a power session')
     New-Item -Path $startupKey -Force | Out-Null
     New-ItemProperty -Path $startupKey -Name $startupName -Value ('"' + $executable + '" --startup') -PropertyType String -Force | Out-Null
+    $touchedStartup = $true
     if (Test-Path $preferences) { throw 'Unexpected existing preferences in CI profile' }
     New-Item -ItemType Directory -Path (Split-Path $preferences -Parent) -Force | Out-Null
     # Start the packaged app silently in an acknowledged, idle state.
     Set-Content $preferences '{"Preferences":{},"HasOnboarded":true}' -Encoding utf8
+    $createdPreferences = $true
     $runningApp = Start-Process -FilePath $executable -ArgumentList '--startup' -PassThru
     if (-not $runningApp.WaitForInputIdle(10000) -or $runningApp.HasExited) { throw 'Packaged app did not reach idle startup' }
     Install-Preview
@@ -82,7 +87,7 @@ try {
 }
 finally {
     if ($runningApp -and -not $runningApp.HasExited) { $runningApp.Kill(); $runningApp.WaitForExit() }
-    Remove-Item -LiteralPath $preferences -Force -ErrorAction SilentlyContinue
-    if ((Get-ItemProperty $startupKey -Name $startupName -ErrorAction SilentlyContinue)) { Remove-ItemProperty $startupKey -Name $startupName -ErrorAction SilentlyContinue }
+    if ($createdPreferences) { Remove-Item -LiteralPath $preferences -Force -ErrorAction SilentlyContinue }
+    if ($touchedStartup) { Remove-ItemProperty $startupKey -Name $startupName -ErrorAction SilentlyContinue }
     if (Test-Path $installation) { Remove-Item -LiteralPath $installation -Recurse -Force -ErrorAction SilentlyContinue }
 }
