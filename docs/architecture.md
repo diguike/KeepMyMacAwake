@@ -64,7 +64,17 @@ PID 不能独立作为租约身份，应结合随机令牌、客户端身份与�
 
 需要覆盖 helper 注册失败、App 移动路径、升级中版本不匹配、退出、强杀、重启及卸载。提供图形化“停止并移除后台组件”入口，先确认恢复再卸载；单纯把 App 拖进废纸篓不能作为可靠恢复方案。
 
-当前源码目录为 app/、core/、helper/、shared/、tests/；Swift Package 按平台加入 macOS 目标。构建配置见 docs/distribution.md。
+2026-10-13 源码搬到 `macos/app/`、`macos/core/`、`macos/helper/`、`macos/shared/`、`macos/tests/`、`macos/native-tests/`。根 Swift Package 按平台加入 macOS 目标，脚本兼容入口保留。构建配置见 docs/distribution.md。
+
+## 2026-10-13 双端结构
+
+同仓库 `macos/` 和 `windows/` 分别保留原生 UI 与系统后端；`specs/` 是共用产品场景和测试数据，不通过强制共用语言改变现有 Mac 行为。根 Package.swift、Mac bundle/helper ID、签名要求与 dist 位置保留，避免目录调整影响已有安装。
+
+Windows 使用 .NET 10：WPF / NotifyIcon UI → SessionController → PowerRequest。系统与显示请求分开，柔光临时窗口在停止、锁屏或异常后撤销；到期、断网、拔电、时间跳变结束会话，手动睡眠 / 恢复后不自动续跑。普通请求随句柄释放，不修改系统合盖设置。能力配置固定为接电开盖、无应用热保护，未知数据如实显示。
+
+合盖恢复源码是独立的 LidRecoveryCoordinator / LeaseEngine → 固定 PowrProf 后端与受保护 write-ahead store。服务拥有固定协议、限长消息、管理员/SYSTEM 管道权限及客户端检查，但生产签名与安装信任未完成，入口无条件拒绝启动。服务未连接到普通 App，不安装或打包进用户体验 ZIP。合盖与电池在生产能力中关闭；其算法模拟测试不能代替已运行的独立恢复服务。
+
+详细产品边界和后续安全门槛见 windows-plan.md、windows-handoff.md 和 windows/service/README.md。
 
 ## 当前实现细节与约束
 

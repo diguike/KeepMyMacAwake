@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/app-tests/">
+    <Project Path="app-tests/Awake.App.Tests.csproj" />
+  </Folder>
+  <Folder Name="/app/">
+    <Project Path="app/Awake.App.csproj" />
+  </Folder>
+  <Folder Name="/core/">
+    <Project Path="core/Awake.Core.csproj" />
+  </Folder>
+  <Folder Name="/platform/">
+    <Project Path="platform/Awake.Platform.csproj" />
+  </Folder>
+  <Folder Name="/service-tests/">
+    <Project Path="service-tests/Awake.Service.Tests.csproj" />
+  </Folder>
+  <Folder Name="/service/">
+    <Project Path="service/Awake.Service.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Awake.Core.Tests.csproj" />
+  </Folder>
+</Solution>
