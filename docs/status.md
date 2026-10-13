@@ -1,6 +1,6 @@
 # 项目进度与下一会话入口
 
-更新：2026-10-13，服务器 Windows 开发预览与双端仓库重构；同日三视角体验优化见文末。最新验证见文末；0.2.0 / 0.2.1 Mac 记录保留为历史证据。用户明确授权开发、安装、组件注册及验证后推送和合入 main；本轮系统服务安装与真机行为留待本地。
+更新：2026-10-14，三视角体验优化已合入 main；服务器 Windows 开发预览、双端仓库重构和最新验证见文末。0.2.0 / 0.2.1 Mac 记录保留为历史证据。用户明确授权开发、安装、组件注册及验证后推送和合入 main；本轮系统服务安装与真机行为留待本地。
 
 ## 已实现并安装
 
@@ -159,4 +159,12 @@ Windows普通预览只开放接电开盖，明确无应用热保护。合盖、�
 - Mac：SwiftUI / AppModel 改动未在本机编译；需 macOS CI 或本机执行 `swift test`（含扩充后的到期原生测试）与 `./scripts/build-macos.sh`，并目视检查菜单栏宽度、副标题换行、上次结果行。
 - Windows：Windows runner 执行 `windows/app-tests/`；真机目视检查场景选中态在亮色、暗色、高对比度下的效果。
 - [PR #4](https://github.com/diguike/KeepMyMacAwake/pull/4) 的 [push CI #38389490270](https://github.com/diguike/KeepMyMacAwake/actions/runs/38389490270) 与 [PR CI #38389519211](https://github.com/diguike/KeepMyMacAwake/actions/runs/38389519211) 全部通过：macOS runner 编译 SwiftUI 改动并执行 56 项 XCTest（含扩充的到期原生测试）、ad-hoc 打包成功；Windows runner 执行 11 项 WPF 注入检查全部通过。CI 不代替菜单栏宽度、换行和三种主题的目视检查。
-- 未合入 main、未发布。下一步：“有网时”改名、结束通知、结果持久化、Windows 首次关窗提示等待用户决定。
+- 2026-10-14 已通过 PR #4 合入 main（`bdea7ae`）；未发布新版本。下一步：“有网时”改名、结束通知、结果持久化、Windows 首次关窗提示等待用户决定。
+
+## 2026-10-14：体验优化主分支交付
+
+用户明确要求全部本地代码合入主分支并推送远端。[PR #4](https://github.com/diguike/KeepMyMacAwake/pull/4) 已于 2026-10-14 00:16（Asia/Singapore）合入远端 main，合并提交 `bdea7ae`，包含代码提交 `bb1b361` 和 CI 记录提交 `5a691a2`。服务器本地已切换到 main 并快进同步；全部本地分支提交均已包含在 main 中。
+
+本轮检查：重新同步远端，核对原 push / PR CI 均成功；确认最新分支提交只修改 docs/status.md，代码与通过验证的 `bb1b361` 相同；`git diff --check` 通过。合并后源码树与原体验优化分支完全一致，无冲突。
+
+合并后的 [main CI #38429199645](https://github.com/diguike/KeepMyMacAwake/actions/runs/38429199645) 四个任务全部通过：Linux Swift 测试、Linux Windows 核心与服务模拟检查、Mac 测试及双架构打包、Windows 构建与核心／模拟／WPF 注入检查及自包含打包。本轮未修改源码，未在服务器重复运行平台测试；本交付记录仅为文档更新。未增加功能或发布安装包；原生 UI 目视检查、物理合盖和 Windows 真机矩阵仍按上文及交接文档完成。
