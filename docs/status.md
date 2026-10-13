@@ -1,6 +1,6 @@
 # 项目进度与下一会话入口
 
-更新：2026-10-13，服务器 Windows 开发预览与双端仓库重构。最新验证见文末；0.2.0 / 0.2.1 Mac 记录保留为历史证据。用户明确授权开发、安装、组件注册及验证后推送和合入 main；本轮系统服务安装与真机行为留待本地。
+更新：2026-10-13，服务器 Windows 开发预览与双端仓库重构；同日三视角体验优化见文末。最新验证见文末；0.2.0 / 0.2.1 Mac 记录保留为历史证据。用户明确授权开发、安装、组件注册及验证后推送和合入 main；本轮系统服务安装与真机行为留待本地。
 
 ## 已实现并安装
 
@@ -135,3 +135,28 @@ Windows普通预览只开放接电开盖，明确无应用热保护。合盖、�
 - Windows PowerShell自包含x64打包与CI artifact上传通过。服务器本地产物约70.4MiB；另核对ZIP完整性、SHA256、x64 PE架构、随包运行时、说明/许可证与服务排除。
 
 [PR #3](https://github.com/diguike/KeepMyMacAwake/pull/3) 已于2026-10-13 16:04（Asia/Singapore）合入main，合并提交 `78b1237`。服务器已快进同步；本地可以直接拉取main继续开发。普通功能的Windows原生使用、合盖/电池与签名安装仍按交接矩阵完成，不把CI通过表述为真机功能支持。
+
+## 2026-10-13：三视角体验优化（分支 feat/ux-round）
+
+用户要求从 AI 使用者、产品经理、UI 设计师视角做一轮优化。评审与取舍见 [ux-review.md](ux-review.md)。
+
+### 本轮改动
+
+- 两端：运行中显示“预计（明天）HH:mm 结束”；会话结束后保留“上次 起–止 · 运行时长 · 停止原因”，切换场景不清除，开始新会话时隐藏。只在内存中保留，不跨重启。
+- Mac：场景默认值移到核心 `ScenePreset`，契约测试逐字段比对 `specs/scenes.json`；待机标题显示阻塞原因；待机副标题为配置摘要与“已调整”标记；菜单栏倒计时 `7h59m`；欢迎页以 AI 任务为主并说明不判断任务完成。
+- Windows：场景按钮选中态（含暗色、高对比度画刷与读屏“已选择”）；配置摘要与 Mac 同序并含屏幕模式；新增 1 项 WPF 注入检查（结束时刻、上次结果、场景选中标志）。
+- 文案只描述设计行为：普通模式“不影响锁屏，请保持开盖”；未新增任何平台能力声明。
+
+### 服务器实际检查
+
+- Swift `swift test`（Docker，官方 Swift 6.0.3 镜像）：39 项通过（原 34 项 + 5 项 SessionText / 预设）。不含 Mac 原生测试。
+- `dotnet test windows/tests/Awake.Core.Tests.csproj -c Release`：36 项通过（原 30 + 6 项 SessionText，与 Swift 用例相同）。
+- `dotnet run --project windows/service-tests/...`：27 项通过。
+- `dotnet build windows/KeepMyMacAwake.slnx -c Release`：7 个项目 0 警告 0 错误，含 WPF XAML 编译。11 项 WPF 注入检查只编译，未在 Linux 执行。
+
+### 待验证
+
+- Mac：SwiftUI / AppModel 改动未在本机编译；需 macOS CI 或本机执行 `swift test`（含扩充后的到期原生测试）与 `./scripts/build-macos.sh`，并目视检查菜单栏宽度、副标题换行、上次结果行。
+- Windows：Windows runner 执行 `windows/app-tests/`；真机目视检查场景选中态在亮色、暗色、高对比度下的效果。
+- [PR #4](https://github.com/diguike/KeepMyMacAwake/pull/4) 的 [push CI #38389490270](https://github.com/diguike/KeepMyMacAwake/actions/runs/38389490270) 与 [PR CI #38389519211](https://github.com/diguike/KeepMyMacAwake/actions/runs/38389519211) 全部通过：macOS runner 编译 SwiftUI 改动并执行 56 项 XCTest（含扩充的到期原生测试）、ad-hoc 打包成功；Windows runner 执行 11 项 WPF 注入检查全部通过。CI 不代替菜单栏宽度、换行和三种主题的目视检查。
+- 未合入 main、未发布。下一步：“有网时”改名、结束通知、结果持久化、Windows 首次关窗提示等待用户决定。

@@ -25,7 +25,8 @@
 - 默认仅接电；电池模式显式开启，可设置电量保护下限。
 - 严重热压力持续 30 秒或临界热状态时停止；保护数据未知时停止。
 - helper 维护有限期租约、20 秒失联截止和持久化恢复记录；进程重启先恢复遗留设置。
-- 菜单栏显示剩余时间，独立控制窗口方便操作；自动记住偏好，重启不会自动保活。
+- 菜单栏显示剩余时间，控制窗口显示预计结束时刻；会话结束后保留“上次运行”的起止时间与停止原因。
+- 独立控制窗口方便操作；自动记住偏好，重启不会自动保活。
 - 设置提供恢复、登录启动和停止并移除后台组件。
 - 网络路径与电源状态分别显示；未知状态不会显示为正常。
 
@@ -109,7 +110,7 @@ swift test
 
 ## 文档
 
-[进度与待验证项](docs/status.md) · [Mac 交接](docs/mac-handoff.md) · [技术设计](docs/architecture.md) · [验证矩阵](docs/validation.md) · [产品范围](docs/product.md) · [决策](docs/decisions.md) · [研究](docs/research.md) · [资料](docs/references.md)
+[进度与待验证项](docs/status.md) · [Mac 交接](docs/mac-handoff.md) · [技术设计](docs/architecture.md) · [验证矩阵](docs/validation.md) · [产品范围](docs/product.md) · [决策](docs/decisions.md) · [研究](docs/research.md) · [资料](docs/references.md) · [三视角体验评审](docs/ux-review.md)
 
 Windows 的体验对齐、产品评审和本地接续见 [双端方案](docs/windows-plan.md) · [产品评审](docs/product-review-windows.md) · [Windows 交接](docs/windows-handoff.md)。
 

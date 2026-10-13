@@ -8,6 +8,7 @@
     <SolidColorBrush x:Key="LineBrush" Color="#DAD3C9" />
     <SolidColorBrush x:Key="AccentBrush" Color="#B55E2C" />
     <SolidColorBrush x:Key="AccentTextBrush" Color="White" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#F5E3D5" />
     <BooleanToVisibilityConverter x:Key="BoolVisibility" />
     <Style TargetType="TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
