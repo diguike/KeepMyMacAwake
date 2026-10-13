@@ -2,7 +2,7 @@
 
 原生 macOS 菜单栏应用：**合盖继续运行，到时恢复休眠。**
 
-现扩展为同仓库的 Mac / Windows 原生客户端，名字暂保留 KeepMyMacAwake。核心用途：让已启动的 AI 长任务在你离开或休息时继续运行。已发布 Mac 体验版为 0.2.1；本地源码为 Mac 0.2.2 / Windows 0.3.1，新增最近结果保存、可选通知和 Windows 图形安装器，尚未发布。支持范围与验证证据分别记录。
+现扩展为同仓库的 Mac / Windows 原生客户端，名字暂保留 KeepMyMacAwake。核心用途：让已启动的 AI 长任务在你离开或休息时继续运行。已发布 Mac 体验版为 0.2.1；当前源码为 Mac 0.2.2 / Windows 0.3.1，新增最近结果保存、可选通知和 Windows 图形安装器，尚未发布新 Release。支持范围与验证证据分别记录。
 
 由 [递归客](https://github.com/diguike) 开源，MIT 许可证。
 

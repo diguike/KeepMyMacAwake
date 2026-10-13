@@ -1,6 +1,6 @@
 # 项目进度与下一会话入口
 
-更新：2026-10-14，本地评审落实与双端打包。最新验证见文末，既有发布与 CI 记录保留为历史证据。本轮用户要求先在本地完成，开发完再讨论；代码与产物留在本地分支，未推送或发布。
+更新：2026-10-14，GitHub 双架构 Windows 打包与界面报告已集成。最新验证见文末，既有本地验证、发布与 CI 记录保留为历史证据。用户后续选择 GitHub 优先流程，PR #5 已合入 main；尚未发布新 Release。
 
 ## 已实现并安装
 
@@ -204,10 +204,24 @@ Mac：实际系统通知投递未验收；本轮使用默认关闭与注入回�
 
 下一步讨论采用 Windows 11 ARM 虚拟机还是远程/物理 Windows 环境，按 mac-windows-workflow.md 接续；Windows 虚拟机不能代替笔记本物理合盖。新代码没有远端 CI；本轮按用户要求先保留本地代码和产物。
 
-## 2026-10-14：GitHub Windows 流程（执行中）
+## 2026-10-14：GitHub Windows 流程
 
 用户已明确选择优先用 GitHub 完成 Windows 测试、打包和界面报告，本地 Windows 环境后续再调研。已新增双架构 CI、手动 windows/all 入口、Windows NSIS PowerShell 打包与包核验、临时主机安装器生命周期检查，以及 63 张真实 WPF 控件渲染图片/HTML/JSON 报告。应用和报告复用主题资源；Windows 页脚改读实际版本，修复原先硬编码 0.3.0。
 
-本机检查：7 个 .NET 项目交叉构建 0 警告/0 错误；核心 39 项、协议/请求模拟 27 项通过；workflow YAML 解析与空白检查通过。WPF 渲染和 PowerShell/NSIS/安装器生命周期等待 GitHub 实际执行，不以本地编译代替。Mac 源码未再修改，前一轮 61 项本机结果保留，推送后 CI 将做双端回归。
+本机检查：7 个 .NET 项目交叉构建 0 警告/0 错误；核心 39 项、协议/请求模拟 27 项通过；workflow YAML 解析与空白检查通过。WPF 渲染和 PowerShell/NSIS/安装器生命周期随后在 GitHub 实际执行，结果见下文。Mac 源码未再修改，前一轮 61 项本机结果保留，远端再次执行双端回归。
 
-操作说明见 github-windows-build.md。实际运行、修复和下载回执将在完成后补充；尚未创建 Release，也没有安装本地 Windows 环境。
+操作说明见 github-windows-build.md，实际运行、修复和下载回执见下文。尚未创建 Release，也没有安装本地 Windows 环境。
+
+### 实际 GitHub 执行与集成
+
+最终代码提交 ac5595d 的 [push CI #38442050479](https://github.com/diguike/KeepMyMacAwake/actions/runs/38442050479) 与 [PR CI #38442056254](https://github.com/diguike/KeepMyMacAwake/actions/runs/38442056254) 五个任务全部通过。每个 Windows 架构实际执行核心 39 项、协议/后端模拟 27 项、WPF 注入 14 项；生成 63 张 PNG，渲染/绑定错误为 0；EXE/ZIP 包核验及 5 项实际静默安装器生命周期检查通过。Linux Swift 39 项、macOS 61 项及双架构 ad-hoc 构建通过。
+
+从 GitHub 下载了最终双架构报告，复核 JSON 全部通过、126 张图片齐全；目视检查浅/深/高对比资源及自定义分钟、跨日结果示例。前一版 1e02bd9 的双架构 EXE/ZIP 已回下载并核对 SHA-256；ac5595d 只调整报告模拟数据，最终 CI 对各自包再次执行完整校验。
+
+实际运行中修复：NSIS 使用兼容 Mac/Windows 的路径分隔符；静默拒绝返回错误码 2，避免等待不可见提示；升级测试等待实际更新事件就绪，并确认正在运行的打包 App 正常退出。报告复审发现暗色页签/主按钮受到隐式 TextBlock 样式影响，已明确文字颜色；Windows 版本显示从程序集读取。一次性 CI 检查保留既有用户数据的守卫，不能用于自托管或本地主机。
+
+[PR #5](https://github.com/diguike/KeepMyMacAwake/pull/5) 于 2026-10-14 01:59（Asia/Singapore）合入 main，合并提交 4f65fcc。本地 main 已快进同步，合并源码树与通过验证的 ac5595d 完全相同。GitHub 默认分支已有 Run workflow 的 windows/all 手动入口；合并后的 [main CI #38443061474](https://github.com/diguike/KeepMyMacAwake/actions/runs/38443061474) 五个任务也全部通过。
+
+main CI 产物可直接下载：[Windows x64 包](https://github.com/diguike/KeepMyMacAwake/actions/runs/38443061474/artifacts/11837561540)、[Windows ARM64 包](https://github.com/diguike/KeepMyMacAwake/actions/runs/38443061474/artifacts/11837941831)、[x64 界面/测试报告](https://github.com/diguike/KeepMyMacAwake/actions/runs/38443061474/artifacts/11837101607)、[ARM64 界面/测试报告](https://github.com/diguike/KeepMyMacAwake/actions/runs/38443061474/artifacts/11837696872)。附件保留 14 天，过期后可通过手动入口重新生成；报告解压后在 Mac 打开 ui/index.html。版本仍是未签名 Windows 0.3.1 开发预览，不是公开 Release。
+
+本轮没有安装本地 Windows 环境、运行真实 Windows 保活会话、部署未开放服务、上传签名凭据或发布 Release。云端安装器检查使用管理员/UAC 关闭环境；普通用户权限、实际系统通知及物理电源/合盖仍由后续设备验收。
