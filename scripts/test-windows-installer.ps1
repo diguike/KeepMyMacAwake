@@ -18,16 +18,18 @@ $createdPreferences = $false
 $touchedStartup = $false
 $preferences = Join-Path $env:LOCALAPPDATA 'KeepMyMacAwake/windows/preferences.json'
 function Invoke-Bounded([string]$Path, [string]$Arguments) {
+    Write-Host ("Running " + (Split-Path $Path -Leaf) + " " + $Arguments)
     $process = Start-Process -FilePath $Path -ArgumentList $Arguments -PassThru
     if (-not $process.WaitForExit(60000)) {
         $process.Kill()
-        throw 'Installer/application process timed out'
+        throw ("Installer/application timed out: " + (Split-Path $Path -Leaf) + " " + $Arguments)
     }
     if ($process.ExitCode -ne 0) { throw "Installer/application exit code: $($process.ExitCode)" }
 }
 function Install-Preview {
     # NSIS /D must be last and unquoted, including paths containing spaces.
     Invoke-Bounded $installer "/S /D=$installation"
+    Write-Host 'Installation returned successfully'
     if (-not (Test-Path $executable) -or -not (Test-Path $uninstaller)) { throw 'Installer did not create app and uninstaller' }
     if ((Get-ItemProperty $registration).InstallLocation -ne $installation) { throw 'Uninstall registration has incorrect path' }
     if ((Get-FileHash $executable).Hash -ne (Get-FileHash (Join-Path $stage 'app/KeepMyMacAwake.Windows.exe')).Hash) { throw 'Installed app differs from packaged output' }
@@ -58,6 +60,21 @@ try {
     $createdPreferences = $true
     $runningApp = Start-Process -FilePath $executable -ArgumentList '--startup' -PassThru
     if (-not $runningApp.WaitForInputIdle(10000) -or $runningApp.HasExited) { throw 'Packaged app did not reach idle startup' }
+    Write-Host 'Packaged app reached idle startup'
+    $eventName = 'Local\KeepMyMacAwake.Windows.Update.' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $ready = $false
+    $deadline = [DateTime]::UtcNow.AddSeconds(15)
+    while (-not $ready -and [DateTime]::UtcNow -lt $deadline) {
+        try {
+            $handle = [Threading.EventWaitHandle]::OpenExisting($eventName)
+            $handle.Dispose()
+            $ready = $true
+        }
+        catch [Threading.WaitHandleCannotBeOpenedException] { Start-Sleep -Milliseconds 100 }
+        if ($runningApp.HasExited) { throw 'Packaged app exited before its update endpoint became ready' }
+    }
+    if (-not $ready) { throw 'Packaged app update endpoint did not become ready' }
+    Write-Host 'Packaged app update endpoint is ready'
     Install-Preview
     if (-not $runningApp.WaitForExit(10000)) { throw 'Upgrade did not stop the running idle app' }
     if ($runningApp.ExitCode -ne 0) { throw 'Packaged app failed during startup/upgrade exit' }

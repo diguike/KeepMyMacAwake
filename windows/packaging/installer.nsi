@@ -36,28 +36,31 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
+!macro RefusePreview Message
+  IfSilent +2
+    MessageBox MB_ICONSTOP "${Message}"
+  SetErrorLevel 2
+  Quit
+!macroend
+
 Function .onInit
   SetShellVarContext current
   ${IfNot} ${AtLeastWin11}
-    MessageBox MB_ICONSTOP "此开发预览需要 Windows 11。"
-    Abort
+    !insertmacro RefusePreview "此开发预览需要 Windows 11。"
   ${EndIf}
 !if "${RUNTIME}" == "win-arm64"
   ${IfNot} ${IsNativeARM64}
-    MessageBox MB_ICONSTOP "此 ARM64 包需要 Windows on ARM。x64 电脑请下载 x64 包。"
-    Abort
+    !insertmacro RefusePreview "此 ARM64 包需要 Windows on ARM。x64 电脑请下载 x64 包。"
   ${EndIf}
 !endif
   ${IfNot} ${RunningX64}
-    MessageBox MB_ICONSTOP "此安装包需要 64 位 Windows。"
-    Abort
+    !insertmacro RefusePreview "此安装包需要 64 位 Windows。"
   ${EndIf}
   ; Keep one installation and refuse architecture changes that would mix files.
   ReadRegStr $0 HKCU "Software\KeepMyMacAwake.Windows" "Runtime"
   ${If} $0 != ""
   ${AndIf} $0 != "${RUNTIME}"
-    MessageBox MB_ICONSTOP "已安装另一架构。请先通过系统设置卸载，再安装此包。"
-    Abort
+    !insertmacro RefusePreview "已安装另一架构。请先通过系统设置卸载，再安装此包。"
   ${EndIf}
 FunctionEnd
 
@@ -68,8 +71,7 @@ Section "安装"
     IfErrors failed
     ${If} $0 != 0
       failed:
-      MessageBox MB_ICONSTOP "尚未确认旧应用已停止。请打开应用恢复并退出，然后重试安装。"
-      Abort
+      !insertmacro RefusePreview "尚未确认旧应用已停止。请打开应用恢复并退出，然后重试安装。"
     ${EndIf}
   ready:
   SetOutPath "$INSTDIR"
@@ -98,8 +100,7 @@ Section "Uninstall"
     IfErrors failed
     ${If} $0 != 0
       failed:
-      MessageBox MB_ICONSTOP "尚未确认保活已停止。请打开应用恢复并退出，然后重试卸载。"
-      Abort
+      !insertmacro RefusePreview "尚未确认保活已停止。请打开应用恢复并退出，然后重试卸载。"
     ${EndIf}
   stopped:
   ; Remove only a startup entry belonging to this installation.
