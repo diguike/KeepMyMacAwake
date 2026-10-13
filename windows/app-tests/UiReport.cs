@@ -35,7 +35,8 @@ internal static class UiReport
         {
             var store = new PreferencesStore(directory);
             store.Save(new Preferences(), state != "welcome");
-            var epoch = new DateTimeOffset(2026, 10, 14, 23, 30, 0, TimeSpan.Zero);
+            var local = new DateTime(2026, 10, 14, 23, 30, 0, DateTimeKind.Unspecified);
+            var epoch = new DateTimeOffset(local, TimeZoneInfo.Local.GetUtcOffset(local));
             Model = new MainViewModel(new Backend(), () => new PowerSample(true, 95, true, ThermalLevel.Unknown),
                 () => new ClockSample(epoch.AddSeconds(seconds), seconds), store, false);
             switch (state)
@@ -44,7 +45,8 @@ internal static class UiReport
                 case "active":
                     Model.ToggleCommand.Execute(null); seconds = 600; Model.RefreshMonitor(); break;
                 case "completed":
-                    Model.DurationMinutes = 1; Model.ToggleCommand.Execute(null); seconds = 60; Model.RefreshMonitor(); break;
+                    Model.DurationMinutes = 0; Model.CustomMinutesText = "1";
+                    Model.ToggleCommand.Execute(null); seconds = 60; Model.RefreshMonitor(); break;
                 case "lid-unavailable": Model.LidCommand.Execute(null); break;
             }
         }
