@@ -55,6 +55,15 @@ final class SessionTextTests: XCTestCase {
         XCTAssertEqual(SessionText.timer(-3), "00:00:00")
         XCTAssertEqual(Set(ScenePreset.all.map(\.tagline)).count, ScenePreset.all.count)
     }
+    func testLargeNumberParts() {
+        typealias P = SessionText.NumberPart
+        XCTAssertEqual(SessionText.parts(6 * 3600 + 28 * 60), [P("6", "小时"), P("28", "分")])
+        XCTAssertEqual(SessionText.parts(45 * 60 + 11.2), [P("45", "分"), P("12", "秒")])
+        XCTAssertEqual(SessionText.parts(8 * 3600, seconds: false), [P("8", "小时")])
+        XCTAssertEqual(SessionText.parts(90 * 60, seconds: false), [P("1", "小时"), P("30", "分")])
+        XCTAssertEqual(SessionText.parts(30 * 60, seconds: false), [P("30", "分钟")])
+        XCTAssertEqual(SessionText.parts(-5), [P("0", "分"), P("0", "秒")])
+    }
     func testEveryPresetIsValidPreferences() {
         for preset in ScenePreset.all {
             let value = preset.preferences

@@ -47,13 +47,36 @@ import AwakeCore
             next.titleVisibility = .hidden
             next.titlebarAppearsTransparent = true
             next.isReleasedWhenClosed = false
+            // Assign first: the page asks the window to fit its content during the first layout.
+            window = next
             let host = NSHostingView(rootView: ControlPanel(model: .shared).padding(.top, 14))
             host.sizingOptions = []
             next.contentView = host
-            next.contentMinSize = NSSize(width: 460, height: 560)
+            next.contentMinSize = NSSize(width: 460, height: 360)
             next.contentMaxSize = NSSize(width: 460, height: 1400)
-            next.center(); window = next
+            next.center()
         }
         window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+    }
+    private var contentHeight: CGFloat = 0
+    private var viewportHeight: CGFloat = 0
+    /// Called with the measured page and visible-area heights of the control window.
+    func fit(content: CGFloat? = nil, viewport: CGFloat? = nil) {
+        if let content { contentHeight = content }
+        if let viewport { viewportHeight = viewport }
+        guard contentHeight > 0, viewportHeight > 0 else { return }
+        adjustHeight(by: contentHeight - viewportHeight)
+    }
+    /// Keeps the top edge in place and stays within the visible screen.
+    private func adjustHeight(by delta: CGFloat) {
+        guard let window, abs(delta) > 1 else { return }
+        let available = (window.screen ?? NSScreen.main)?.visibleFrame ?? window.frame
+        var frame = window.frame
+        let height = min(max(frame.height + delta, 400), available.height - 20)
+        guard abs(height - frame.height) > 1 else { return }
+        frame.origin.y += frame.height - height
+        frame.size.height = height
+        if frame.minY < available.minY { frame.origin.y = available.minY }
+        window.setFrame(frame, display: true)
     }
 }
