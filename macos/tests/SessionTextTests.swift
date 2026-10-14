@@ -12,9 +12,9 @@ final class SessionTextTests: XCTestCase {
         calendar.date(from: DateComponents(year: 2026, month: 10, day: day, hour: hour, minute: minute))!
     }
     func testEndTimeNamesTheNextDay() {
-        XCTAssertEqual(SessionText.endTime(date(13, 7, 30), now: date(13, 6, 30), calendar: calendar), "预计 07:30 结束")
-        XCTAssertEqual(SessionText.endTime(date(14, 7, 5), now: date(13, 23, 5), calendar: calendar), "预计明天 07:05 结束")
-        XCTAssertEqual(SessionText.endTime(date(15, 0, 10), now: date(13, 23, 50), calendar: calendar), "预计 2 天后 00:10 结束")
+        XCTAssertEqual(SessionText.endTime(date(13, 7, 30), now: date(13, 6, 30), calendar: calendar), "07:30 结束")
+        XCTAssertEqual(SessionText.endTime(date(14, 7, 5), now: date(13, 23, 5), calendar: calendar), "明天 07:05 结束")
+        XCTAssertEqual(SessionText.endTime(date(15, 0, 10), now: date(13, 23, 50), calendar: calendar), "2 天后 00:10 结束")
     }
     func testDurationAndMenuBarText() {
         XCTAssertEqual(SessionText.duration(30), "不足 1 分钟")
@@ -32,23 +32,25 @@ final class SessionTextTests: XCTestCase {
     }
     func testSummaryAndCustomization() throws {
         var value = AwakePreferences()
-        XCTAssertEqual(value.summary, "1 小时 · 需开盖 · 仅接电 · 允许熄屏")
+        XCTAssertEqual(value.summary, "1 小时，需开盖，仅接电，屏幕自动关闭")
         XCTAssertFalse(value.isCustomized)
         value.durationMinutes = 0; value.customMinutes = 95
         XCTAssertEqual(value.durationText, "1 小时 35 分钟"); XCTAssertTrue(value.isCustomized)
         let network = try XCTUnwrap(ScenePreset.named("有网时"))
         value.scene = network.name; value.durationMinutes = -1; value.lidMode = true; value.requireAC = false; value.requireNetwork = true
-        XCTAssertEqual(value.summary, "直到手动停止 · 可合盖 · 可用电池 · 断网停止 · 允许熄屏")
+        XCTAssertEqual(value.summary, "不限时，可合盖，可用电池，断网即停，屏幕自动关闭")
     }
     func testScreenModeNamesKeepStoredIdentifiers() {
-        XCTAssertEqual(["自动熄屏", "保持常亮", "夜间柔光"].map(SessionText.screenMode), ["允许熄屏", "屏幕常亮", "调暗常亮"])
+        XCTAssertEqual(["自动熄屏", "保持常亮", "夜间柔光"].map(SessionText.screenMode), ["自动关闭", "常亮", "调暗"])
         XCTAssertEqual(SessionText.screenMode("unknown"), "unknown")
         var value = AwakePreferences(); value.screenMode = "夜间柔光"
         XCTAssertTrue(value.isValid, "Display names must not replace saved identifiers")
     }
     func testSpanAndTimerText() {
-        XCTAssertEqual(SessionText.span(start: date(13, 23, 10), end: date(14, 7, 10), calendar: calendar), "10/13 23:10 – 10/14 07:10")
-        XCTAssertEqual(SessionText.span(start: date(14, 1, 10), end: date(14, 2, 5), calendar: calendar), "10/14 01:10 – 02:05")
+        XCTAssertEqual(SessionText.endedAt(date(14, 7, 10), now: date(14, 9, 0), calendar: calendar), "07:10")
+        XCTAssertEqual(SessionText.endedAt(date(13, 23, 10), now: date(14, 9, 0), calendar: calendar), "昨天 23:10")
+        XCTAssertEqual(SessionText.endedAt(date(11, 7, 5), now: date(14, 9, 0), calendar: calendar), "10/11 07:05")
+        XCTAssertEqual(ScenePreset.all.map { $0.preferences.brief }, ["1 小时", "8 小时 · 调暗", "不限时 · 合盖", "2 小时 · 合盖"])
         XCTAssertEqual(SessionText.timer(3 * 3600 + 5 * 60 + 9.9), "03:05:09")
         XCTAssertEqual(SessionText.timer(-3), "00:00:00")
         XCTAssertEqual(Set(ScenePreset.all.map(\.tagline)).count, ScenePreset.all.count)

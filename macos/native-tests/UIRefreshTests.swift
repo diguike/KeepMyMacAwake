@@ -110,7 +110,7 @@ final class UIRefreshTests: XCTestCase {
         XCTAssertFalse(model.hasSession)
         XCTAssertFalse(model.active)
         XCTAssertEqual(model.remaining, 0)
-        XCTAssertEqual(model.message, "已停止，本应用不再阻止睡眠")
+        XCTAssertEqual(model.message, "", "A late reply must not leave a stale notice")
     }
 
     @MainActor func testRepeatedScreenNotificationsAndDimAdjustmentReuseVisibleOverlays() async throws {

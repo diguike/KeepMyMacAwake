@@ -32,15 +32,14 @@ final class ScreenshotTests: XCTestCase {
                              helperStatus: { .notRegistered }, startMonitoring: false)
         await model.refresh()
 
-        try render(ControlPanel(model: model).frame(height: 886), "first-run", output)
         model.acknowledge()
         model.chooseScene("夜间")
         for appearance in ["light", "dark"] {
-            try render(ControlPanel(model: model).frame(height: 886), "control-idle-\(appearance)", output, dark: appearance == "dark")
+            try render(ControlPanel(model: model).frame(height: 760), "control-idle-\(appearance)", output, dark: appearance == "dark")
             try render(popover(MenuBarPanel(model: model)), "menubar-idle-\(appearance)", output, dark: appearance == "dark")
         }
         PanelRouter.shared.tab = .settings
-        try render(ControlPanel(model: model).frame(height: 886), "settings-light", output)
+        try render(ControlPanel(model: model).frame(height: 760), "settings-light", output)
         PanelRouter.shared.tab = .control
 
         // Start an ordinary session, then show it as the night scene without creating real dimming overlays.
@@ -50,7 +49,7 @@ final class ScreenshotTests: XCTestCase {
         model.scene = "夜间"; model.screenMode = "夜间柔光"
         time = 92 * 60; await model.refresh()
         for appearance in ["light", "dark"] {
-            try render(ControlPanel(model: model).frame(height: 886), "control-active-\(appearance)", output, dark: appearance == "dark")
+            try render(ControlPanel(model: model).frame(height: 760), "control-active-\(appearance)", output, dark: appearance == "dark")
             try render(popover(MenuBarPanel(model: model)), "menubar-active-\(appearance)", output, dark: appearance == "dark")
         }
         let stopped = await model.stop()

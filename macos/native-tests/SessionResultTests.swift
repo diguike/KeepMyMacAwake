@@ -22,10 +22,10 @@ final class SessionResultTests: XCTestCase {
         XCTAssertEqual(notifications, 1)
         let next = model()
         XCTAssertEqual(next.lastResult, original.lastResult)
-        XCTAssertTrue(try XCTUnwrap(next.lastResult).contains("设定时间已到"))
+        XCTAssertEqual(next.lastSession?.reason, StopReason.expired.message)
         XCTAssertFalse(next.hasSession); XCTAssertEqual(notifications, 1)
         next.chooseScene("有网时")
-        XCTAssertTrue(next.statusDetail.contains("外出合盖")); XCTAssertEqual(next.scene, "有网时")
+        XCTAssertEqual(next.sceneDisplayName, "外出合盖"); XCTAssertEqual(next.scene, "有网时")
     }
     @MainActor func testDefaultAndDeniedNotificationsNeverSend() async throws {
         var sent = 0
@@ -51,7 +51,7 @@ final class SessionResultTests: XCTestCase {
                              helperStatus: { .notRegistered }, startMonitoring: false)
         // Refresh uses the injected monitor, rather than a fabricated ready state.
         await model.refresh()
-        XCTAssertNotEqual(model.readinessTitle, "可以开始")
+        XCTAssertNotEqual(model.readinessTitle, "未开启")
         XCTAssertEqual(model.readinessTitle, StopReason.telemetryUnknown.message)
         // Unknown values stay visibly unknown in the menu bar panel.
         XCTAssertEqual(model.powerText, "未知"); XCTAssertEqual(model.networkText, "未知"); XCTAssertEqual(model.thermalDescription, "未知")
@@ -67,7 +67,7 @@ final class SessionResultTests: XCTestCase {
         model.acknowledge(); model.requireAC = false; model.durationMinutes = 30
         await model.refresh()
         XCTAssertEqual(model.phase, .off); XCTAssertEqual(model.phaseText, "未开启"); XCTAssertNil(model.elapsedSeconds)
-        XCTAssertEqual(model.powerText, "使用电池 · 64%"); XCTAssertEqual(model.networkText, "已连接"); XCTAssertEqual(model.thermalDescription, "略高")
+        XCTAssertEqual(model.powerText, "电池 64%"); XCTAssertEqual(model.networkText, "已连接"); XCTAssertEqual(model.thermalDescription, "略高")
         await model.start()
         XCTAssertEqual(model.phase, .on, model.message); XCTAssertEqual(model.phaseText, "保持唤醒中")
         time = 600; await model.refresh()

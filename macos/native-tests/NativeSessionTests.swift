@@ -73,13 +73,13 @@ final class NativeSessionTests: XCTestCase {
             clock: { ClockSample(wall: Date(timeIntervalSince1970: 1000 + time), continuous: time) })
         model.onboarded = true; model.durationMinutes = 0; model.customMinutes = 1
         await model.start(); XCTAssertTrue(model.active, model.message)
-        XCTAssertTrue(model.statusDetail.contains("预计"), model.statusDetail); XCTAssertNil(model.lastResult)
+        XCTAssertTrue(model.statusDetail.hasSuffix("结束"), model.statusDetail); XCTAssertNil(model.lastResult)
         time = 61; await model.refresh()
-        XCTAssertFalse(model.hasSession); XCTAssertTrue(model.message.contains("设定时间已到"))
+        XCTAssertFalse(model.hasSession); XCTAssertEqual(model.lastSession?.reason, StopReason.expired.message)
         // The ending stays visible after the user starts preparing the next session.
         model.chooseScene("夜间")
         let last = try XCTUnwrap(model.lastResult)
-        XCTAssertTrue(last.contains("运行 1 分钟") && last.contains("设定时间已到"), last)
+        XCTAssertTrue(last.contains("运行 1 分钟") && last.contains(StopReason.expired.message), last)
         XCTAssertTrue(try ownAssertions().filter { ($0[kIOPMAssertionNameKey as String] as? String)?.hasPrefix("KeepMyMacAwake") == true }.isEmpty)
     }
     @MainActor func testNetworkProtectionEndsRealSessionWithoutAutoRestart() async throws {
@@ -97,7 +97,7 @@ final class NativeSessionTests: XCTestCase {
         model.onboarded = true; model.durationMinutes = 0; model.customMinutes = 1
         await model.start(); XCTAssertTrue(model.active, model.message)
         time = 61; await model.extendSession()
-        XCTAssertFalse(model.hasSession); XCTAssertTrue(model.message.contains("设定时间已到"))
+        XCTAssertFalse(model.hasSession); XCTAssertEqual(model.lastSession?.reason, StopReason.expired.message)
         XCTAssertTrue(try ownAssertions().filter { ($0[kIOPMAssertionNameKey as String] as? String)?.hasPrefix("KeepMyMacAwake") == true }.isEmpty)
     }
     @MainActor func testSavedPreferencesRestoreButNeverResumeSession() throws {

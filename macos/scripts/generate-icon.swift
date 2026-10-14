@@ -12,18 +12,25 @@ for (size, scale) in sizes {
     let context = NSGraphicsContext.current!.cgContext
     context.scaleBy(x: CGFloat(pixels) / 1024, y: CGFloat(pixels) / 1024)
     let background = NSBezierPath(roundedRect: NSRect(x: 56, y: 56, width: 912, height: 912), xRadius: 210, yRadius: 210)
-    NSGradient(starting: NSColor(red: 0.18, green: 0.20, blue: 0.24, alpha: 1),
-               ending: NSColor(red: 0.08, green: 0.10, blue: 0.13, alpha: 1))!.draw(in: background, angle: 75)
-    NSColor(red: 0.95, green: 0.70, blue: 0.37, alpha: 1).setStroke()
-    let moon = NSBezierPath(); moon.move(to: NSPoint(x: 690, y: 790))
-    moon.curve(to: NSPoint(x: 825, y: 665), controlPoint1: NSPoint(x: 630, y: 660), controlPoint2: NSPoint(x: 710, y: 590))
-    moon.lineWidth = 25; moon.lineCapStyle = .round; moon.stroke()
-    let handle = NSBezierPath(ovalIn: NSRect(x: 635, y: 370, width: 130, height: 155)); handle.lineWidth = 36; handle.stroke()
-    NSColor(red: 1, green: 0.93, blue: 0.80, alpha: 1).setFill()
+    // Night-sky blue with a white cup; no warm brand accent.
+    NSGradient(starting: NSColor(red: 0.07, green: 0.10, blue: 0.22, alpha: 1),
+               ending: NSColor(red: 0.22, green: 0.31, blue: 0.53, alpha: 1))!.draw(in: background, angle: 75)
+    let moonColor = NSColor(red: 0.76, green: 0.84, blue: 1.0, alpha: 1)
+    // Crescent: a disc with an offset disc clipped out.
+    NSGraphicsContext.saveGraphicsState()
+    let cutout = NSBezierPath(rect: NSRect(x: 0, y: 0, width: 1024, height: 1024))
+    cutout.appendOval(in: NSRect(x: 712, y: 690, width: 132, height: 132)); cutout.windingRule = .evenOdd; cutout.addClip()
+    moonColor.setFill(); NSBezierPath(ovalIn: NSRect(x: 676, y: 660, width: 140, height: 140)).fill()
+    NSGraphicsContext.restoreGraphicsState()
+    let handle = NSBezierPath(ovalIn: NSRect(x: 635, y: 370, width: 130, height: 155)); handle.lineWidth = 36
+    NSColor(white: 0.98, alpha: 1).setStroke()
+    handle.stroke()
+    NSColor(white: 0.98, alpha: 1).setFill()
     let cup = NSBezierPath(); cup.move(to: NSPoint(x: 282, y: 580)); cup.line(to: NSPoint(x: 677, y: 580))
     cup.line(to: NSPoint(x: 652, y: 384)); cup.curve(to: NSPoint(x: 310, y: 384), controlPoint1: NSPoint(x: 635, y: 270), controlPoint2: NSPoint(x: 322, y: 270)); cup.close(); cup.fill()
-    NSColor(red: 0.95, green: 0.70, blue: 0.37, alpha: 1).setStroke()
+    NSColor(white: 0.98, alpha: 0.9).setStroke()
     let saucer = NSBezierPath(); saucer.move(to: NSPoint(x: 248, y: 278)); saucer.line(to: NSPoint(x: 712, y: 278)); saucer.lineWidth = 30; saucer.lineCapStyle = .round; saucer.stroke()
+    moonColor.withAlphaComponent(0.85).setStroke()
     for x in [390.0, 510.0] {
         let steam = NSBezierPath(); steam.move(to: NSPoint(x: x, y: 644))
         steam.curve(to: NSPoint(x: x + 12, y: 797), controlPoint1: NSPoint(x: x + 70, y: 700), controlPoint2: NSPoint(x: x - 50, y: 735))

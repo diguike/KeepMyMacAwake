@@ -9,7 +9,7 @@ import AwakeCore
     func send(_ result: SessionResult) {
         let content = UNMutableNotificationContent()
         content.title = "保持唤醒已结束"
-        content.body = result.text
+        content.body = "\(result.reason)，共运行 \(SessionText.duration(result.end.timeIntervalSince(result.start)))"
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         // Notification delivery is independent of stopping and restoring power.
         UNUserNotificationCenter.current().add(request) { _ in }

@@ -62,7 +62,7 @@ PID 不能独立作为租约身份，应结合随机令牌、客户端身份与�
 
 目标是用户下载后可正常安装的签名、公证发行物。暂定首版 macOS 14+ 与 Apple Silicon 优先，是否加入 Intel 取决于验证矩阵。
 
-需要覆盖 helper 注册失败、App 移动路径、升级中版本不匹配、退出、强杀、重启及卸载。提供图形化“停止并卸载后台组件”入口，先确认恢复再卸载；单纯把 App 拖进废纸篓不能作为可靠恢复方案。
+需要覆盖 helper 注册失败、App 移动路径、升级中版本不匹配、退出、强杀、重启及卸载。提供图形化“卸载后台组件…”入口，先确认恢复再卸载；单纯把 App 拖进废纸篓不能作为可靠恢复方案。
 
 2026-10-13 源码搬到 `macos/app/`、`macos/core/`、`macos/helper/`、`macos/shared/`、`macos/tests/`、`macos/native-tests/`。根 Swift Package 按平台加入 macOS 目标，脚本兼容入口保留。构建配置见 docs/distribution.md。
 
