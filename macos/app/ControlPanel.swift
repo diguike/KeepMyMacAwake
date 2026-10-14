@@ -10,37 +10,50 @@ enum PanelTab: String { case control = "控制", settings = "设置" }
     @Published var tab: PanelTab = .control
 }
 
+/// Reports its height when it appears and whenever it changes.
+private struct HeightReporter: View {
+    let report: (CGFloat) -> Void
+    var body: some View {
+        GeometryReader { geometry in
+            Color.clear
+                .onAppear { report(geometry.size.height) }
+                .onChange(of: geometry.size.height) { _, height in report(height) }
+        }
+    }
+}
+
 struct ControlPanel: View {
     @ObservedObject var model: AppModel
     @ObservedObject var router: PanelRouter = .shared
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                AppMark(size: 30)
-                Text("KeepMyMacAwake").font(.system(size: 15, weight: .semibold))
+                AppMark(size: 26)
+                Text("KeepMyMacAwake").font(.system(size: 14, weight: .semibold))
                 Spacer()
+                PillPicker(options: [(PanelTab.control, PanelTab.control.rawValue), (PanelTab.settings, PanelTab.settings.rawValue)],
+                           selection: $router.tab, compact: true)
             }
-            .padding(.horizontal, 22).padding(.top, 18).padding(.bottom, 12)
-            Picker("页面", selection: $router.tab) {
-                Text(PanelTab.control.rawValue).tag(PanelTab.control)
-                Text(PanelTab.settings.rawValue).tag(PanelTab.settings)
-            }
-            .pickerStyle(.segmented).labelsHidden().fixedSize().padding(.bottom, 14)
+            .padding(.horizontal, 22).padding(.top, 16).padding(.bottom, 16)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if router.tab == .settings { SettingsView(model: model) } else { controls }
                 }
                 .padding(.horizontal, 22).padding(.bottom, 20)
+                .background(HeightReporter { ControlWindow.shared.fit(content: $0) })
             }
             .scrollIndicators(.hidden)
+            // The window hugs the page instead of leaving an empty area below it.
+            .background(HeightReporter { ControlWindow.shared.fit(viewport: $0) })
             if router.tab == .control {
                 Divider()
                 PrimaryActions(model: model).padding(.horizontal, 22).padding(.vertical, 14)
             }
         }
-        .frame(width: 460).frame(minHeight: 520, idealHeight: 760, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
-        .tint(AwakeStyle.accent)
+        .frame(width: 460).frame(minHeight: 300, idealHeight: 760, maxHeight: .infinity)
+        .background(AwakeStyle.page)
+        .tint(AwakeStyle.ink)
     }
 
     private var controls: some View {
@@ -69,8 +82,8 @@ struct ControlPanel: View {
                     HStack {
                         SectionTitle(text: "选项")
                         if model.preferences.isCustomized {
-                            Text("已调整").font(.system(size: 10, weight: .medium)).foregroundStyle(AwakeStyle.accent)
-                                .padding(.horizontal, 6).padding(.vertical, 2).background(AwakeStyle.accent.opacity(0.12), in: Capsule())
+                            Text("已调整").font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+                                .padding(.horizontal, 6).padding(.vertical, 1.5).background(AwakeStyle.well, in: Capsule())
                         }
                     }
                     options
@@ -103,11 +116,9 @@ struct ControlPanel: View {
             HStack {
                 Text("屏幕").font(.system(size: 13))
                 Spacer()
-                Picker("屏幕", selection: $model.screenMode) {
-                    ForEach(["自动熄屏", "保持常亮", "夜间柔光"], id: \.self) { Text(SessionText.screenMode($0)).tag($0) }
-                }
-                .pickerStyle(.segmented).labelsHidden().fixedSize()
-                .help(SessionText.screenModeHelp)
+                PillPicker(options: ["自动熄屏", "保持常亮", "夜间柔光"].map { ($0, SessionText.screenMode($0)) },
+                           selection: $model.screenMode, compact: true)
+                    .help(SessionText.screenModeHelp)
             }
             if model.nightMode {
                 HStack(spacing: 8) {
@@ -167,9 +178,9 @@ struct SceneCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Image(systemName: icon).font(.system(size: 15, weight: .medium)).frame(width: 30, height: 30)
-                    .foregroundStyle(selected ? AwakeStyle.accent : Color.secondary)
-                    .background(selected ? AwakeStyle.accent.opacity(0.15) : Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Image(systemName: icon).font(.system(size: 14)).frame(width: 28, height: 28)
+                    .foregroundStyle(selected ? AwakeStyle.onInk : Color.secondary)
+                    .background(selected ? AwakeStyle.ink : AwakeStyle.well, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(preset?.displayName ?? name).font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary)
                     Text(preset?.tagline ?? "").font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
@@ -177,8 +188,10 @@ struct SceneCard: View {
                 Spacer(minLength: 0)
             }
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? AwakeStyle.accent.opacity(0.08) : AwakeStyle.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(selected ? AwakeStyle.accent.opacity(0.55) : AwakeStyle.stroke, lineWidth: selected ? 1.5 : 1))
+            .background(AwakeStyle.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(selected ? AwakeStyle.ink.opacity(0.85) : AwakeStyle.hairline, lineWidth: selected ? 1 : 0.5))
+            .shadow(color: .black.opacity(selected ? 0.07 : 0.03), radius: selected ? 5 : 3, y: selected ? 2 : 1)
             .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
@@ -210,7 +223,7 @@ struct ConditionChip: View {
         Label(value, systemImage: icon).font(.system(size: 11, weight: .medium)).lineLimit(1)
             .foregroundStyle(warning ? Color.orange : Color.secondary)
             .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(warning ? Color.orange.opacity(0.12) : Color.primary.opacity(0.05), in: Capsule())
+            .background(warning ? Color.orange.opacity(0.12) : AwakeStyle.well, in: Capsule())
     }
 }
 
@@ -272,7 +285,7 @@ struct AuthorizationCard: View {
             }
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(AwakeStyle.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(AwakeStyle.well, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -323,7 +336,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("KeepMyMacAwake \(appVersion)").font(.system(size: 12, weight: .medium))
                     Link("github.com/diguike/KeepMyMacAwake", destination: URL(string: "https://github.com/diguike/KeepMyMacAwake")!)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("退出") { Task { await model.quit() } }.disabled(model.busy)

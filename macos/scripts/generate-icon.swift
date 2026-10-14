@@ -12,10 +12,10 @@ for (size, scale) in sizes {
     let context = NSGraphicsContext.current!.cgContext
     context.scaleBy(x: CGFloat(pixels) / 1024, y: CGFloat(pixels) / 1024)
     let background = NSBezierPath(roundedRect: NSRect(x: 56, y: 56, width: 912, height: 912), xRadius: 210, yRadius: 210)
-    // Night-sky blue with a white cup; no warm brand accent.
-    NSGradient(starting: NSColor(red: 0.07, green: 0.10, blue: 0.22, alpha: 1),
-               ending: NSColor(red: 0.22, green: 0.31, blue: 0.53, alpha: 1))!.draw(in: background, angle: 75)
-    let moonColor = NSColor(red: 0.76, green: 0.84, blue: 1.0, alpha: 1)
+    // Graphite with a white cup; color is left to the system and to state.
+    NSGradient(starting: NSColor(white: 0.06, alpha: 1), ending: NSColor(white: 0.25, alpha: 1))!.draw(in: background, angle: 75)
+    NSColor(white: 1, alpha: 0.10).setStroke(); background.lineWidth = 3; background.stroke()
+    let moonColor = NSColor(white: 0.80, alpha: 1)
     // Crescent: a disc with an offset disc clipped out.
     NSGraphicsContext.saveGraphicsState()
     let cutout = NSBezierPath(rect: NSRect(x: 0, y: 0, width: 1024, height: 1024))

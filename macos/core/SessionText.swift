@@ -71,6 +71,22 @@ public enum SessionText {
         }
     }
     public static let screenModeHelp = "自动关闭：按系统设置关闭屏幕\n常亮：屏幕保持点亮\n调暗：保持点亮并加一层软件暗色遮罩，不调节硬件亮度"
+    public struct NumberPart: Equatable {
+        public let value: String
+        public let unit: String
+        public init(_ value: String, _ unit: String) { self.value = value; self.unit = unit }
+    }
+    /// Large-number layout: "6 小时 28 分", or "45 分 12 秒" in the last hour.
+    /// Planned durations pass `seconds: false` and drop zero minutes ("8 小时").
+    public static func parts(_ seconds: Double, seconds showSeconds: Bool = true) -> [NumberPart] {
+        let total = max(0, Int(seconds.rounded(.up)))
+        let hours = total / 3600, minutes = total / 60 % 60, rest = total % 60
+        if hours > 0 {
+            if !showSeconds && minutes == 0 { return [NumberPart("\(hours)", "小时")] }
+            return [NumberPart("\(hours)", "小时"), NumberPart("\(minutes)", "分")]
+        }
+        return showSeconds ? [NumberPart("\(minutes)", "分"), NumberPart("\(rest)", "秒")] : [NumberPart("\(max(1, minutes))", "分钟")]
+    }
     /// "01:05:09" for elapsed or remaining session time.
     public static func timer(_ seconds: Double) -> String {
         let value = max(0, Int(seconds.rounded(.down)))

@@ -181,6 +181,22 @@ import AwakeShared
         if let reason = evaluator.evaluate(sample, policy: policy, now: readClock().continuous) { return reason.message }
         return "未开启"
     }
+    /// Right side of the status line: when it ends, or when an unlimited session began.
+    var trailingStatus: String {
+        guard active, let startedAt else { return "" }
+        if unlimitedSession { return "\(SessionText.clock(startedAt)) 开始" }
+        return SessionText.endTime(startedAt.addingTimeInterval(sessionSeconds), now: readClock().wall)
+    }
+    /// What the next start will run for; nil for an unlimited session.
+    var plannedSeconds: Double? {
+        durationMinutes == -1 ? nil : Double((durationMinutes == 0 ? customMinutes : durationMinutes) * 60)
+    }
+    /// Up to two rules worth noticing before a start, e.g. "可合盖 · 断网即停".
+    var flagsText: String {
+        let flags: [String?] = [lidMode ? "可合盖" : nil, screenMode != "自动熄屏" ? "屏幕" + SessionText.screenMode(screenMode) : nil,
+                                requireNetwork ? "断网即停" : nil, requireAC ? nil : "可用电池"]
+        return flags.compactMap { $0 }.prefix(2).joined(separator: " · ")
+    }
     /// True when the idle title names something that would prevent a start.
     var isBlocked: Bool { !active && !hasSession && readinessTitle != "未开启" }
     /// What the person may do while it runs; lid-closed mode is the one to make obvious.

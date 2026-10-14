@@ -8,24 +8,24 @@ struct MenuBarPanel: View {
     @ObservedObject var model: AppModel
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            content
-            Divider()
-            HStack(spacing: 14) {
-                Button("更多选项…") { open(.control) }
-                Button("设置…") { open(.settings) }
+            HStack(spacing: 6) {
+                Text("KeepMyMacAwake").font(.system(size: 12.5, weight: .semibold))
                 Spacer()
-                Button("退出") { Task { await model.quit() } }.disabled(model.busy)
+                IconButton(symbol: "slider.horizontal.3", label: "更多选项") { open(.control) }
+                IconButton(symbol: "gearshape", label: "设置") { open(.settings) }
+                IconButton(symbol: "power", label: "退出") { Task { await model.quit() } }.disabled(model.busy)
             }
-            .buttonStyle(.plain).font(.system(size: 12)).foregroundStyle(.secondary)
-            .padding(.horizontal, 14).padding(.vertical, 10)
+            .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 4)
+            content
         }
         .frame(width: 320)
-        .tint(AwakeStyle.accent)
+        .background(AwakeStyle.page)
+        .tint(AwakeStyle.ink)
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
-            StatusHero(model: model, compact: true)
+            StatusHero(model: model, compact: true).awakeCard(padding: 14, radius: 14)
             VStack(alignment: .leading, spacing: 7) {
                 if let period = model.periodText {
                     InfoRow(icon: "clock", title: model.unlimitedSession ? "开始于" : "时段", value: period)
@@ -41,34 +41,13 @@ struct MenuBarPanel: View {
             .awakeCard(padding: 12, radius: 12)
             if !model.hasSession, let last = model.lastSession { LastSessionView(result: last, now: model.now).padding(.horizontal, 2) }
             if !model.hasSession {
-                HStack(spacing: 6) {
-                    ForEach(AwakeStyle.scenes, id: \.name) { scene in
-                        sceneButton(scene.name, icon: scene.icon)
-                    }
-                }
+                PillPicker(options: AwakeStyle.scenes.map { ($0.name, ScenePreset.named($0.name)?.displayName ?? $0.name) },
+                           selection: Binding(get: { model.scene }, set: { model.chooseScene($0) }), compact: true)
+                    .frame(maxWidth: .infinity).disabled(model.busy)
             }
             PrimaryActions(model: model, compact: true)
         }
         .padding(14)
-    }
-
-    private func sceneButton(_ name: String, icon: String) -> some View {
-        let selected = model.scene == name
-        let title = ScenePreset.named(name)?.displayName ?? name
-        return Button { model.chooseScene(name) } label: {
-            VStack(spacing: 4) {
-                Image(systemName: icon).font(.system(size: 13, weight: .medium))
-                Text(title).font(.system(size: 10, weight: .medium)).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity).padding(.vertical, 7)
-            .foregroundStyle(selected ? AwakeStyle.accent : Color.secondary)
-            .background(selected ? AwakeStyle.accent.opacity(0.12) : AwakeStyle.surface, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(selected ? AwakeStyle.accent.opacity(0.5) : .clear, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain).disabled(model.busy)
-        .accessibilityLabel("选择\(title)场景").accessibilityAddTraits(selected ? .isSelected : [])
-        .help(ScenePreset.named(name)?.preferences.summary ?? title)
     }
 
     private func open(_ tab: PanelTab) {
