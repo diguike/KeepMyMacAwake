@@ -304,3 +304,4 @@ main CI 产物可直接下载：[Windows x64 包](https://github.com/diguike/Kee
 - 新增 `SessionText.parts` 大数字拆分与测试；视觉组件重写为墨色/卡片/胶囊切换/细刻度条/圆形图标按钮；菜单栏面板去掉页脚改为标题右侧图标按钮；控制窗口按内容自动收放；图标改为石墨黑。Mac 0.4.0 / build 7。
 - 本机：`swift test` 66 项执行，65 通过、1 项按需截图跳过；离屏渲染 9 张截图与图标预览逐张目视检查。调试构建实测控制窗口由 900pt 自动收至 702pt（日常场景待机），两三次布局内稳定；首轮尝试用 PreferenceKey 测量读回为 0，已改为 GeometryReader onAppear/onChange。调试窗口出现在用户屏幕上后被关闭，未继续在调试构建上操作。
 - PR #8（上次结束悬停提示只附加一次）CI 10 项通过，已合入 main `9726b98`。
+- 升级 0.3.1 时真机读回卸载确认框，系统提供的取消按钮显示为英文 “Cancel”。已在确认框显式加入“取消”，并在 Info.plist 声明 `CFBundleDevelopmentRegion` 为 zh_CN、`CFBundleLocalizations` 为 zh-Hans，使系统自带文字随中文界面显示。
