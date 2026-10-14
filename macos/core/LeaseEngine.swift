@@ -66,7 +66,7 @@ public final class LeaseEngine {
         recoveryPending = true
         do {
             try backend.setDisabled(true)
-            guard try backend.readDisabled() else { throw AwakeError.backend("设置读回失败") }
+            guard try backend.readDisabled() else { throw AwakeError.backend("睡眠设置写入后读回失败") }
             let id = UUID()
             lease = Lease(id: id, owner: owner, start: now, duration: duration,
                           policy: policy, heartbeat: now.continuous, safety: safety)
@@ -140,7 +140,7 @@ public final class LeaseEngine {
             throw AwakeError.recoveryRequired
         }
         if try backend.readDisabled() { try backend.setDisabled(false) }
-        guard !(try backend.readDisabled()) else { throw AwakeError.backend("休眠设置恢复读回失败") }
+        guard !(try backend.readDisabled()) else { throw AwakeError.backend("睡眠设置恢复后读回失败") }
         try store.clear()
     }
 }

@@ -51,8 +51,31 @@ final class SessionResultTests: XCTestCase {
                              helperStatus: { .notRegistered }, startMonitoring: false)
         // Refresh uses the injected monitor, rather than a fabricated ready state.
         await model.refresh()
-        XCTAssertNotEqual(model.readinessTitle, "随时准备好")
+        XCTAssertNotEqual(model.readinessTitle, "可以开始")
         XCTAssertEqual(model.readinessTitle, StopReason.telemetryUnknown.message)
+        // Unknown values stay visibly unknown in the menu bar panel.
+        XCTAssertEqual(model.powerText, "未知"); XCTAssertEqual(model.networkText, "未知"); XCTAssertEqual(model.thermalDescription, "未知")
+    }
+    @MainActor func testMenuBarInfoFollowsSessionPhase() async throws {
+        let suite = "io.github.diguike.KeepMyMacAwake.tests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var time: Double = 0
+        let model = AppModel(defaults: defaults, sample: { PowerSample(onAC: false, batteryPercent: 64, thermal: .fair, networkAvailable: true) },
+                             clock: { ClockSample(wall: Date(timeIntervalSince1970: 1_792_000_000 + time), continuous: time) },
+                             helperStatus: { .notRegistered }, startMonitoring: false)
+        model.acknowledge(); model.requireAC = false; model.durationMinutes = 30
+        await model.refresh()
+        XCTAssertEqual(model.phase, .off); XCTAssertEqual(model.phaseText, "未开启"); XCTAssertNil(model.elapsedSeconds)
+        XCTAssertEqual(model.powerText, "使用电池 · 64%"); XCTAssertEqual(model.networkText, "已连接"); XCTAssertEqual(model.thermalDescription, "略高")
+        await model.start()
+        XCTAssertEqual(model.phase, .on, model.message); XCTAssertEqual(model.phaseText, "保持唤醒中")
+        time = 600; await model.refresh()
+        XCTAssertEqual(model.elapsedSeconds, 600); XCTAssertEqual(model.statusTitle, "00:20:00")
+        let stopped = await model.stop()
+        XCTAssertTrue(stopped, model.message); XCTAssertEqual(model.phase, .off)
+        XCTAssertEqual(model.lastSession?.reason, StopReason.manual.message)
+        XCTAssertEqual(AppModel(defaults: defaults, helperStatus: { .notRegistered }, startMonitoring: false).lastSession, model.lastSession)
     }
     @MainActor func testAdHocPreviewStopsWithoutQueryingInstalledHelper() async {
         var requests = 0

@@ -70,7 +70,7 @@ public partial class App : Application
         if (model is not null && !model.TryStop())
         {
             MainWindow?.Show();
-            MessageBox.Show("保活尚未释放，请点击恢复后再退出。", "KeepMyMacAwake", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("睡眠阻止尚未取消，请点击恢复后再退出。", "KeepMyMacAwake", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         IsExiting = true; Shutdown();

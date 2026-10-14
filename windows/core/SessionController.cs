@@ -21,7 +21,7 @@ public sealed class SessionController(IPowerBackend backend, PlatformCapabilitie
         LastStopReason = null; Error = null;
         if (!options.IsValid || !double.IsFinite(now.Continuous)) throw new ArgumentException("会话参数无效");
         if (options.LidMode && (!capabilities.LidSupported || !capabilities.ThermalSupported)) throw new InvalidOperationException(capabilities.LidUnavailableReason ?? "合盖能力尚未通过验证");
-        if (!capabilities.BatterySupported && sample.OnAC == false) throw new InvalidOperationException("Windows 电池保活尚未通过验证，请接电后开启");
+        if (!capabilities.BatterySupported && sample.OnAC == false) throw new InvalidOperationException("Windows 使用电池保持唤醒尚未通过验证，请接电后开始");
         safety = new();
         var reason = safety.Evaluate(sample, options, capabilities, now.Continuous);
         if (reason is not null) { LastStopReason = reason; throw new InvalidOperationException(reason.ToString()); }

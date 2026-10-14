@@ -71,7 +71,7 @@ internal static class UiReport
         var failures = new List<string>();
         var states = new (string Id, string Label)[]
         {
-            ("welcome", "首次使用"), ("daily", "日常待机"), ("night", "夜间配置"),
+            ("welcome", "首次使用"), ("daily", "日常未开启"), ("night", "夜间配置"),
             ("active", "运行与预计结束"), ("completed", "上次结果"),
             ("lid-unavailable", "合盖尚未开放"), ("settings", "设置")
         };
