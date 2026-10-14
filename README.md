@@ -78,7 +78,7 @@ KeepMyMacAwake 把“别让 Mac 睡着”做成一个按钮：选一个场景，
 
 ## 当前状态
 
-- Mac 最新体验版 [v0.3.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.3.0)：界面全新设计，新增菜单栏信息面板。使用开发证书签名，尚未公证。
+- Mac 最新体验版 [v0.4.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.4.0)：中性配色、数字为主的状态区、菜单栏信息面板。使用开发证书签名，尚未公证。
 - 普通保持唤醒、到期恢复和夜间调暗都已在本机实测。作者在自用 MacBook 上反馈合盖可用；不同机型的完整合盖验收矩阵仍在进行，详见 [实际进度](docs/status.md)。
 - Windows 版是同仓库的开发预览（WPF + 系统托盘，仅接电开盖），暂无公开 Release，见 [Windows 说明](windows/README.md)。
 

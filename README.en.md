@@ -56,7 +56,7 @@ Use it on a ventilated desk, never inside a bag. The thermal state comes from ma
 
 ## Status
 
-The latest preview is [v0.3.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.3.0), with a redesigned interface and the new menu bar status panel; it is signed with a development certificate and not notarized yet. Ordinary keep-awake, expiry and night dimming are tested on a real Mac; closed-lid mode has worked in the author's own use, while a full multi-model validation matrix is still in progress ([status](docs/status.md), in Chinese). A Windows developer preview (WPF + system tray, plugged in with the lid open only) lives in the same repository without a public release.
+The latest preview is [v0.4.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.4.0), with a neutral, number-first design and the menu bar status panel; it is signed with a development certificate and not notarized yet. Ordinary keep-awake, expiry and night dimming are tested on a real Mac; closed-lid mode has worked in the author's own use, while a full multi-model validation matrix is still in progress ([status](docs/status.md), in Chinese). A Windows developer preview (WPF + system tray, plugged in with the lid open only) lives in the same repository without a public release.
 
 ## Build from source
 
