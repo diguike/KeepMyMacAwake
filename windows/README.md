@@ -1,6 +1,6 @@
 # Windows 开发预览
 
-品牌暂保留 KeepMyMacAwake，窗口标注 Windows；本地版本 0.3.1，尚未发布。使用 .NET 10 / WPF，普通用户无需命令行。
+品牌暂保留 KeepMyMacAwake，窗口标注 Windows；本地版本 0.3.2，尚未发布。使用 .NET 10 / WPF，普通用户无需命令行。
 
 | 目录 | 职责 |
 | --- | --- |

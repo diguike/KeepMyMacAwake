@@ -43,7 +43,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<SessionResult>? SessionEnded;
     public IReadOnlyList<Choice<int>> Durations { get; } = [new("30 分钟", 30), new("1 小时", 60), new("2 小时", 120), new("8 小时", 480), new("直到手动停止", -1), new("自定义…", 0)];
-    public IReadOnlyList<Choice<ScreenMode>> Screens { get; } = [new("自动熄屏", ScreenMode.Automatic), new("保持常亮", ScreenMode.AlwaysOn), new("夜间柔光", ScreenMode.NightDim)];
+    public IReadOnlyList<Choice<ScreenMode>> Screens { get; } = [new("允许熄屏", ScreenMode.Automatic), new("屏幕常亮", ScreenMode.AlwaysOn), new("调暗常亮", ScreenMode.NightDim)];
     public ICommand ToggleCommand { get; }
     public ICommand ExtendCommand { get; }
     public ICommand RecoverCommand { get; }
@@ -85,7 +85,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         dimmer.StopRequested += (_, error) =>
         {
-            TryStop("柔光更新失败"); message = "屏幕变化后柔光更新失败：" + error.Message;
+            TryStop("调暗遮罩更新失败"); message = "屏幕变化后调暗遮罩更新失败：" + error.Message;
             if (NeedsRecovery) message += "；待恢复：" + session.Error;
             Refresh();
         };
@@ -99,26 +99,26 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public bool NeedsRecovery => session.NeedsRecovery;
     public bool CanEdit => !IsActive && !NeedsRecovery;
     public bool IsFiniteActive => IsActive && session.RemainingSeconds is not null;
-    public string PhaseText => NeedsRecovery ? "待恢复" : IsActive ? "运行中" : "待机";
-    public string ActionText => IsActive ? "停止保活" : "开始保活";
+    public string PhaseText => NeedsRecovery ? "需要恢复" : IsActive ? "保持唤醒中" : "未开启";
+    public string ActionText => IsActive ? "停止" : "开始保持唤醒";
     public string Message => message;
     public string VersionText => "Windows 开发预览 · " + typeof(MainViewModel).Assembly.GetName().Version?.ToString(3);
     public string HistoryNotice => historyNotice ?? "";
     public string RemainingText => IsActive ? session.RemainingSeconds is null ? "直到手动停止" : FormatRemaining(session.RemainingSeconds.Value)
-        : NeedsRecovery ? "等待恢复" : preferences.LidMode ? "合盖尚未开放" : !preferences.RequireAC ? "电池尚未开放" : sample.OnAC != true ? "请接通电源" : "尚未开启";
+        : NeedsRecovery ? "等待恢复" : preferences.LidMode ? "合盖尚未开放" : !preferences.RequireAC ? "电池尚未开放" : sample.OnAC != true ? "请接通电源" : "可以开始";
     public string SceneStatusText
     {
         get
         {
             var preset = Preferences.ForScene(preferences.Scene);
             bool custom = DurationMinutes != preset.DurationMinutes || ScreenMode != preset.ScreenMode || LidMode != preset.LidMode || RequireAC != preset.RequireAC || RequireNetwork != preset.RequireNetwork;
-            return SessionText.SceneName(preferences.Scene) + (custom ? " · 已自定义" : "") + (IsActive ? " · 保持运行中" : "");
+            return SessionText.SceneName(preferences.Scene) + (custom ? " · 已自定义" : "") + (IsActive ? " · 保持唤醒中" : "");
         }
     }
     // Same order as the Mac summary: duration · lid · power · network · screen.
     public string ConfigurationText => (DurationMinutes == -1 ? "直到手动停止" : DurationMinutes > 0 ? SessionText.Duration(DurationMinutes * 60)
             : int.TryParse(customMinutesText, out int custom) && custom is >= 1 and <= 1440 ? SessionText.Duration(custom * 60) : customMinutesText + " 分钟")
-        + " · " + (LidMode ? "请求合盖" : "开盖") + " · " + (RequireAC ? "仅接电" : "允许电池") + (RequireNetwork ? " · 断网停止" : "")
+        + " · " + (LidMode ? "请求合盖" : "需开盖") + " · " + (RequireAC ? "仅接电" : "可用电池") + (RequireNetwork ? " · 断网停止" : "")
         + " · " + Screens.First(choice => choice.Value == ScreenMode).Label;
     public string EndText => IsActive && endsAt is { } end ? SessionText.EndTime(end.LocalDateTime, readClock().Wall.LocalDateTime) : "";
     public string LastResultText => lastResult ?? "";
@@ -128,9 +128,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public bool IsLidScene => preferences.Scene == Scene.PluggedLid;
     public bool IsNetworkScene => preferences.Scene == Scene.Network;
     public double Progress => IsActive ? totalSeconds == 0 ? 1 : Math.Clamp((session.RemainingSeconds ?? 0) / totalSeconds, 0, 1) : 0;
-    public string TelemetryText => (sample.OnAC is null ? "电源未知" : sample.OnAC.Value ? "已接电" : "电池供电") + " · " + (sample.BatteryPercent is null ? "电量未知 / 无电池" : sample.BatteryPercent + "%") + "    " + (sample.NetworkAvailable is null ? "网络未知" : sample.NetworkAvailable.Value ? "网络路径可用" : "无网络路径");
-    public string CapabilityText => preferences.LidMode ? "合盖尚未开放：系统设置恢复与机型验证待完成。请保持开盖，或选择日常 / 夜间。" : !preferences.RequireAC ? "电池保活尚未开放：Modern Standby 行为待验证。请选中“仅接通电源时保活”。" : "当前支持：接电、开盖保活。自动熄屏仍按系统设置执行。";
-    public string TrayText => IsActive ? "KeepMyMacAwake · " + (ShowCountdown ? RemainingText : "运行中") : "KeepMyMacAwake · " + PhaseText;
+    public string TelemetryText => (sample.OnAC is null ? "电源未知" : sample.OnAC.Value ? "已接电" : "使用电池") + " · " + (sample.BatteryPercent is null ? "电量未知 / 无电池" : sample.BatteryPercent + "%") + "    " + (sample.NetworkAvailable is null ? "网络未知" : sample.NetworkAvailable.Value ? "网络已连接" : "网络未连接");
+    public string CapabilityText => preferences.LidMode ? "合盖尚未开放：系统设置恢复与机型验证待完成。请保持开盖，或选择日常 / 夜间。" : !preferences.RequireAC ? "使用电池尚未开放：Modern Standby 行为待验证。请勾选“仅在接通电源时运行”。" : "当前支持：接电、开盖时保持唤醒。允许熄屏时，屏幕仍按系统设置关闭。";
+    public string TrayText => IsActive ? "KeepMyMacAwake · " + (ShowCountdown ? RemainingText : "保持唤醒中") : "KeepMyMacAwake · " + PhaseText;
     public int DurationMinutes { get => preferences.DurationMinutes; set { if (!CanEdit || value == preferences.DurationMinutes) return; Update(preferences with { DurationMinutes = value }); Raise(nameof(DurationMinutes)); Raise(nameof(IsCustomDuration)); } }
     public bool IsCustomDuration => DurationMinutes == 0;
     public string CustomMinutesText
@@ -146,7 +146,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     public ScreenMode ScreenMode { get => preferences.ScreenMode; set { if (!CanEdit || value == preferences.ScreenMode) return; Update(preferences with { ScreenMode = value }); Raise(nameof(ScreenMode)); Raise(nameof(IsNightDim)); } }
     public bool IsNightDim => ScreenMode == ScreenMode.NightDim;
     public double DimAmount { get => preferences.DimAmount; set { if (!CanEdit || value == preferences.DimAmount) return; Update(preferences with { DimAmount = value }); Raise(nameof(DimAmount)); Raise(nameof(DimText)); } }
-    public string DimText => "画面变暗 " + Math.Round(DimAmount * 100) + "%";
+    public string DimText => "调暗 " + Math.Round(DimAmount * 100) + "%";
     public bool LidMode { get => preferences.LidMode; set { if (!CanEdit || value == preferences.LidMode) return; Update(preferences with { LidMode = value }); Raise(nameof(LidMode)); } }
     public bool RequireAC { get => preferences.RequireAC; set { if (!CanEdit || value == preferences.RequireAC) return; Update(preferences with { RequireAC = value }); Raise(nameof(RequireAC)); } }
     public bool RequireNetwork { get => preferences.RequireNetwork; set { if (!CanEdit || value == preferences.RequireNetwork) return; Update(preferences with { RequireNetwork = value }); Raise(nameof(RequireNetwork)); } }
@@ -165,7 +165,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         set
         {
             if (value == loginEnabled) return;
-            try { LoginStartup.Set(value); loginEnabled = value; message = value ? "登录时启动，保持待机" : "已关闭登录启动"; }
+            try { LoginStartup.Set(value); loginEnabled = value; message = value ? "登录时启动，不会自动开始" : "已关闭登录启动"; }
             catch (Exception error) { message = "登录启动设置失败：" + error.Message; }
             Raise(nameof(LoginEnabled)); Refresh();
         }
@@ -178,7 +178,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         preferences = next;
         customMinutesText = next.CustomMinutes.ToString(CultureInfo.InvariantCulture);
         minimumBatteryText = next.MinimumBattery.ToString(CultureInfo.InvariantCulture);
-        message = next.LidMode ? "此场景请求合盖保活，当前预览尚未开放。" : "未开启";
+        message = next.LidMode ? "此场景需要合盖运行，当前预览尚未开放。" : "未开启";
         foreach (string name in new[] { nameof(DurationMinutes), nameof(CustomMinutesText), nameof(MinimumBatteryText), nameof(IsCustomDuration), nameof(ScreenMode), nameof(IsNightDim), nameof(DimAmount), nameof(DimText), nameof(LidMode), nameof(RequireAC), nameof(RequireNetwork) }) Raise(name);
         Save(); Refresh();
     }
@@ -190,7 +190,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             if (DurationMinutes == 0 && (!int.TryParse(customMinutesText, out int minutes) || minutes is < 1 or > 1440)) throw new ArgumentException("自定义时间需在 1–1440 分钟范围内");
             if (!int.TryParse(minimumBatteryText, out int battery) || battery is < 10 or > 80) throw new ArgumentException("电量下限需在 10–80% 范围内");
-            if (!RequireAC) throw new InvalidOperationException("此预览仅开放接电保活，请选中“仅接通电源时保活”");
+            if (!RequireAC) throw new InvalidOperationException("此预览仅支持接电使用，请勾选“仅在接通电源时运行”");
             sample = readSample();
             int duration = DurationMinutes == -1 ? 0 : DurationMinutes == 0 ? preferences.CustomMinutes : DurationMinutes;
             var options = new SessionOptions(duration, RequireAC, RequireNetwork, battery, ScreenMode, LidMode, DimAmount);
@@ -201,11 +201,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             catch (Exception dimError)
             {
                 try { session.Stop(); }
-                catch (Exception stopError) { throw new AggregateException("柔光启动失败，保活释放也失败", dimError, stopError); }
-                throw new InvalidOperationException("柔光启动失败：" + dimError.Message, dimError);
+                catch (Exception stopError) { throw new AggregateException("调暗遮罩启动失败，睡眠阻止也未能取消", dimError, stopError); }
+                throw new InvalidOperationException("调暗遮罩启动失败：" + dimError.Message, dimError);
             }
             startedAt = now.Wall; endsAt = duration == 0 ? null : now.Wall.AddMinutes(duration);
-            message = "保持运行中 · 请保持开盖；不改变锁屏策略。";
+            message = "可以锁屏离开 · 请保持开盖";
         }
         catch (Exception error)
         {
@@ -232,10 +232,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             session.Stop();
             if (wasActive) RecordEnd(reason);
-            message = dimError is null ? "已停止保活，恢复正常电源行为" : "保活已释放，柔光撤销失败：" + dimError.Message;
+            message = dimError is null ? "已停止，本应用不再阻止睡眠" : "已取消睡眠阻止，但调暗遮罩撤销失败：" + dimError.Message;
             Refresh(); return dimError is null;
         }
-        catch (Exception error) { if (wasActive) RecordEnd(reason + "；保活释放失败，待恢复"); message = "保活释放失败：" + error.Message; Refresh(); return false; }
+        catch (Exception error) { if (wasActive) RecordEnd(reason + "；未能取消睡眠阻止，需要恢复"); message = "未能取消睡眠阻止：" + error.Message; Refresh(); return false; }
     }
 
     private void Tick()
@@ -268,8 +268,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (e.Mode is PowerModes.Suspend or PowerModes.Resume && IsActive)
         {
             dimmer.Stop();
-            try { session.Stop(StopReason.Disconnected); RecordEnd("系统进入过休眠"); message = "系统进入过休眠，保活已结束；请手动重新开启"; }
-            catch (Exception error) { RecordEnd("系统进入过休眠；保活释放失败，待恢复"); message = error.Message; }
+            try { session.Stop(StopReason.Disconnected); RecordEnd("系统进入过睡眠"); message = "系统进入过睡眠，保持唤醒已结束；请手动重新开始"; }
+            catch (Exception error) { RecordEnd("系统进入过睡眠；未能取消睡眠阻止，需要恢复"); message = error.Message; }
             Refresh();
         }
         else Tick();
@@ -283,7 +283,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             locked = false; Tick();
             if (IsActive && IsNightDim)
-                try { dimmer.Start(DimAmount); } catch (Exception error) { TryStop("柔光恢复失败"); message = "柔光恢复失败：" + error.Message; Refresh(); }
+                try { dimmer.Start(DimAmount); } catch (Exception error) { TryStop("调暗遮罩恢复失败"); message = "调暗遮罩恢复失败：" + error.Message; Refresh(); }
         }
     });
     private void SessionEnding(object sender, SessionEndingCancelEventArgs e) => TryStop("系统注销或关机");
@@ -292,7 +292,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         if (startedAt is { } start)
         {
             var end = readClock().Wall;
-            var result = new SessionResult(start, end < start ? start : end, reason + (NeedsRecovery && !reason.Contains("待恢复", StringComparison.Ordinal) ? "；保活释放失败，待恢复" : ""));
+            var result = new SessionResult(start, end < start ? start : end, reason + (NeedsRecovery && !reason.Contains("需要恢复", StringComparison.Ordinal) ? "；未能取消睡眠阻止，需要恢复" : ""));
             lastResult = result.Text;
             try { store.SaveResult(result); historyNotice = null; }
             catch (Exception error) { historyNotice = "上次结果保存失败：" + error.Message; }
@@ -336,11 +336,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private static string Explain(StopReason reason) => reason switch
     {
-        StopReason.Manual => "已手动停止", StopReason.Expired => "设定时间已到", StopReason.PowerDisconnected => "已断开电源，请接电后重新开启",
-        StopReason.LowBattery => "电量低于保护阈值", StopReason.NetworkDisconnected => "网络路径已断开，请联网后重新开启",
-        StopReason.TelemetryUnknown => "无法取得所需保护数据", StopReason.ClockChanged => "系统时间发生明显变化",
-        StopReason.ThermalCritical => "热状态达到临界状态", StopReason.ThermalSerious => "热状态持续严重",
-        StopReason.Disconnected => "系统休眠或会话已断开", _ => "会话已结束：" + reason
+        StopReason.Manual => "已手动停止", StopReason.Expired => "设定时间已到", StopReason.PowerDisconnected => "电源已断开，请接电后重新开始",
+        StopReason.LowBattery => "电量降到设定下限", StopReason.NetworkDisconnected => "网络已断开，请联网后重新开始",
+        StopReason.TelemetryUnknown => "无法读取电源或散热状态", StopReason.ClockChanged => "系统时间发生明显变化",
+        StopReason.ThermalCritical => "散热状态严重", StopReason.ThermalSerious => "散热状态持续较高",
+        StopReason.Disconnected => "系统睡眠或会话已断开", _ => "会话已结束：" + reason
     };
     public void Dispose()
     {

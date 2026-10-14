@@ -28,16 +28,16 @@ public enum StopReason: String, Codable {
         case .networkDisconnected: return "网络已断开，请联网后重新开启"
         case .manual: return "已手动停止"
         case .expired: return "设定时间已到"
-        case .disconnected: return "应用连接已断开"
-        case .heartbeatLost: return "应用心跳已失联"
-        case .powerDisconnected: return "已断开电源"
-        case .lowBattery: return "电量低于保护阈值"
-        case .thermalCritical: return "热压力达到临界状态"
-        case .thermalSerious: return "热压力持续严重"
-        case .telemetryUnknown: return "无法取得保护监控数据"
+        case .disconnected: return "App 与后台组件断开连接"
+        case .heartbeatLost: return "App 长时间未响应，已自动停止"
+        case .powerDisconnected: return "电源已断开"
+        case .lowBattery: return "电量降到设定下限"
+        case .thermalCritical: return "Mac 散热状态严重"
+        case .thermalSerious: return "Mac 散热状态持续较高"
+        case .telemetryUnknown: return "无法读取电源或散热状态"
         case .clockChanged: return "系统时间发生明显变化"
-        case .backendChanged: return "电源设置被外部修改"
-        case .recovered: return "已恢复上次遗留设置"
+        case .backendChanged: return "系统睡眠设置被其他程序修改"
+        case .recovered: return "已还原上次遗留的睡眠设置"
         }
     }
 }
@@ -90,10 +90,10 @@ public enum AwakeError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidRequest: return "请求参数无效或版本不匹配"
-        case .busy: return "已有保活会话，请先停止"
-        case .unauthorizedLease: return "租约已失效或不属于当前连接"
-        case .conflict: return "其他工具已禁用休眠，请先停止该工具"
-        case .recoveryRequired: return "遗留设置尚未恢复，请先恢复设置"
+        case .busy: return "已在保持唤醒，请先停止"
+        case .unauthorizedLease: return "会话已失效或不属于当前连接"
+        case .conflict: return "其他工具已禁用系统睡眠，请先停止该工具"
+        case .recoveryRequired: return "遗留的睡眠设置尚未恢复，请先恢复"
         case .backend(let detail): return detail
         }
     }

@@ -34,7 +34,7 @@ internal sealed class NightDimmer : IDisposable
     public void Start(double amount)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
-        if (!double.IsFinite(amount) || amount is < .8 or > .98) throw new ArgumentException("柔光程度无效");
+        if (!double.IsFinite(amount) || amount is < .8 or > .98) throw new ArgumentException("调暗程度无效");
         this.amount = amount;
         if (!running) previousTopmost = Application.Current.MainWindow?.Topmost ?? false;
         running = true;

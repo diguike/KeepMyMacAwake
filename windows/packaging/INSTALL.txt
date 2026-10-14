@@ -1,4 +1,4 @@
-KeepMyMacAwake · Windows 开发预览 0.3.1
+KeepMyMacAwake · Windows 开发预览 0.3.2
 
 这是一份未签名、未在 Windows 真机验收的开发体验包，供本地开发和验收。
 首个验收目标：Windows 11 x64。不能据此宣布所有机型均可用。

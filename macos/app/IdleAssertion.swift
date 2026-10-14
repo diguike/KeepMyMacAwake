@@ -10,7 +10,7 @@ final class IdleAssertion {
         var assertion: IOPMAssertionID = 0
         let result = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleSystemSleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn), "KeepMyMacAwake timed session" as CFString, &assertion)
-        guard result == kIOReturnSuccess else { throw AwakeError.backend("无法取得防闲置休眠断言（\(result)）") }
+        guard result == kIOReturnSuccess else { throw AwakeError.backend("无法阻止系统闲置睡眠（\(result)）") }
         id = assertion
         if keepDisplay {
             var display: IOPMAssertionID = 0
@@ -25,12 +25,12 @@ final class IdleAssertion {
     func stop() throws {
         if let display = displayID {
             let result = IOPMAssertionRelease(display)
-            guard result == kIOReturnSuccess else { throw AwakeError.backend("屏幕断言释放失败（\(result)）") }
+            guard result == kIOReturnSuccess else { throw AwakeError.backend("无法取消屏幕常亮（\(result)）") }
             displayID = nil
         }
         guard let assertion = id else { return }
         let result = IOPMAssertionRelease(assertion)
-        guard result == kIOReturnSuccess else { throw AwakeError.backend("防休眠断言释放失败（\(result)）") }
+        guard result == kIOReturnSuccess else { throw AwakeError.backend("无法取消睡眠阻止（\(result)）") }
         id = nil
     }
     deinit { if let id { IOPMAssertionRelease(id) }; if let displayID { IOPMAssertionRelease(displayID) } }

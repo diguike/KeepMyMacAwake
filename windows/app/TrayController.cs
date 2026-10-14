@@ -22,9 +22,9 @@ internal sealed class TrayController : IDisposable
     {
         this.model = model;
         menu.Items.Add("打开控制窗口", null, (_, _) => reveal());
-        toggle = new Forms.ToolStripMenuItem("开始保活", null, (_, _) => model.ToggleCommand.Execute(null)); menu.Items.Add(toggle);
-        extend = new Forms.ToolStripMenuItem("再加 15 分钟", null, (_, _) => model.ExtendCommand.Execute(null)); menu.Items.Add(extend);
-        menu.Items.Add("停止保活", null, (_, _) => model.TryStop());
+        toggle = new Forms.ToolStripMenuItem("开始保持唤醒", null, (_, _) => model.ToggleCommand.Execute(null)); menu.Items.Add(toggle);
+        extend = new Forms.ToolStripMenuItem("延长 15 分钟", null, (_, _) => model.ExtendCommand.Execute(null)); menu.Items.Add(extend);
+        menu.Items.Add("停止", null, (_, _) => model.TryStop());
         menu.Items.Add(new Forms.ToolStripSeparator()); menu.Items.Add("停止并退出", null, (_, _) => exit());
         tray = new Forms.NotifyIcon { Icon = idleIcon, Text = "KeepMyMacAwake", ContextMenuStrip = menu, Visible = true };
         tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) reveal(); };
@@ -37,9 +37,9 @@ internal sealed class TrayController : IDisposable
     private void CommandChanged(object? sender, EventArgs e) => Update();
     public void ShowCloseHint()
     {
-        if (model.ConsumeTrayHint()) ShowBalloon("仍在系统托盘", "关闭窗口后仍会保活。点击托盘杯子或此提示打开；退出请用“停止并退出”。");
+        if (model.ConsumeTrayHint()) ShowBalloon("仍在系统托盘", "关闭窗口后仍会保持唤醒。点击托盘杯子或此提示打开；退出请用“停止并退出”。");
     }
-    private void SessionEnded(Awake.Core.SessionResult result) => ShowBalloon("保活已结束", result.Text);
+    private void SessionEnded(Awake.Core.SessionResult result) => ShowBalloon("保持唤醒已结束", result.Text);
     private void ShowBalloon(string title, string body)
     {
         try { tray.ShowBalloonTip(5000, title, body, Forms.ToolTipIcon.Info); }
