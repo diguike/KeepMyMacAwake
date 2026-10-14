@@ -91,7 +91,8 @@ struct LastSessionView: View {
             Text("\(SessionText.endedAt(result.end, now: now)) \(result.reason)").foregroundStyle(.primary)
         }
         .font(.system(size: 11.5)).lineLimit(1)
-        .help(result.text).accessibilityElement(children: .combine)
+        // Combine first so the tooltip is attached once, not to every child.
+        .accessibilityElement(children: .combine).help(result.text)
     }
 }
 
