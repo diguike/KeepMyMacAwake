@@ -345,6 +345,7 @@ struct SettingsView: View {
         }
         .confirmationDialog("卸载后台组件？", isPresented: $confirmUninstall) {
             Button("卸载", role: .destructive) { Task { await model.removeHelper() } }
+            Button("取消", role: .cancel) {}
         } message: {
             Text("当前会话将停止，合盖功能需要重新安装后才能使用。")
         }
