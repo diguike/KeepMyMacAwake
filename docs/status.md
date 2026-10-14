@@ -252,3 +252,11 @@ main CI 产物可直接下载：[Windows x64 包](https://github.com/diguike/Kee
 
 - 签名安装版中菜单栏面板的真实弹出尺寸、“控制窗口…/设置…”是否先收起面板、刘海遮挡与菜单栏倒计时宽度，需要安装后目视确认。
 - Windows WPF 文案变更需由 GitHub Windows 主机执行 14 项注入检查并重新生成界面报告。
+
+### 远端验证与交付
+
+代码提交 `5c890af` 的 [push CI #38607053056](https://github.com/diguike/KeepMyMacAwake/actions/runs/38607053056) 与 [PR CI #38607086065](https://github.com/diguike/KeepMyMacAwake/actions/runs/38607086065) 五个任务全部通过：macOS runner 执行 65 项 XCTest（1 项按需截图测试跳过）并完成双架构 ad-hoc 构建；Linux Swift 与 Windows 核心/模拟检查通过；Windows x64 / ARM64 各执行 14 项 WPF 注入检查、安装器生命周期检查并生成 63 张界面图，渲染/绑定错误为 0，报告版本 0.3.2。下载 x64 报告抽查运行态浅色图，新文案（保持唤醒中、允许熄屏、仅在接通电源时运行、延长 15 分钟）显示正常。
+
+[PR #6](https://github.com/diguike/KeepMyMacAwake/pull/6) 于 2026-10-15 合入 main，合并提交 `4255d07`，源码树与通过验证的 `5c890af` 一致；合并后的 [main CI #38607898926](https://github.com/diguike/KeepMyMacAwake/actions/runs/38607898926) 五个任务全部通过。GitHub 仓库简介改为面向用户的中英文说明，并补充 keep-awake、prevent-sleep、clamshell、menubar-app、claude-code 等话题标签。
+
+本轮没有发布新 Release，没有替换 `/Applications` 中的 0.2.1 安装版，也没有重新注册 helper。下一步：用户决定是否安装签名 0.3.0 并目视确认真实菜单栏面板，以及是否发布 v0.3.0 体验版，让 README 截图与可下载版本一致。
