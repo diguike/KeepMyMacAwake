@@ -1,6 +1,6 @@
 # 项目进度与下一会话入口
 
-更新：2026-10-15，Mac 0.3.0 界面重设计、菜单栏信息面板与双端术语统一。最新验证见文末，既有本地验证、发布与 CI 记录保留为历史证据。已发布 Mac 体验版仍为 0.2.1。
+更新：2026-10-15，Mac 0.3.0 界面重设计、菜单栏信息面板与双端术语统一；v0.3.0 Pre-release 已发布并安装到本机。最新验证见文末，既有本地验证、发布与 CI 记录保留为历史证据。
 
 ## 已实现并安装
 
@@ -259,4 +259,15 @@ main CI 产物可直接下载：[Windows x64 包](https://github.com/diguike/Kee
 
 [PR #6](https://github.com/diguike/KeepMyMacAwake/pull/6) 于 2026-10-15 合入 main，合并提交 `4255d07`，源码树与通过验证的 `5c890af` 一致；合并后的 [main CI #38607898926](https://github.com/diguike/KeepMyMacAwake/actions/runs/38607898926) 五个任务全部通过。GitHub 仓库简介改为面向用户的中英文说明，并补充 keep-awake、prevent-sleep、clamshell、menubar-app、claude-code 等话题标签。
 
-本轮没有发布新 Release，没有替换 `/Applications` 中的 0.2.1 安装版，也没有重新注册 helper。下一步：用户决定是否安装签名 0.3.0 并目视确认真实菜单栏面板，以及是否发布 v0.3.0 体验版，让 README 截图与可下载版本一致。
+### 本机安装与 v0.3.0 发布
+
+用户随后明确选择“帮我安装”和“发布 v0.3.0”。
+
+- 安装前确认旧 0.2.1 空闲：无 KeepMyMacAwake 断言，SleepDisabled 为 0。通过辅助功能接口在旧 App 设置页点击“停止并移除组件”，界面显示“已恢复设置并移除后台组件”，helper 进程退出、SleepDisabled 仍为 0；随后正常退出旧 App，备份到 `dist/previous-0.2.1.app`（不提交）。
+- `scripts/release-macos.sh` 从 main `e746cc4` 构建 Apple Development 签名通用包；DMG 校验、只读挂载与 ZIP 解包签名检查通过。安装到 `/Applications/KeepMyMacAwake.app`，严格签名通过，主程序 SHA-256 与 dist 及 ZIP 内 App 一致。
+- 新版读取原偏好（场景“接电合盖”）。点击“安装后台组件”后 helper 重新注册并直接连接，此前的系统批准保留，本次没有出现本人认证提示。
+- 真实菜单栏面板：320×479pt，显示状态、规则、电源/网络/散热与“合盖组件 已连接”。从面板选择日常并开始，面板显示剩余 00:59:59、预计结束、开始于、已运行，系统持有本进程 PreventUserIdleSystemSleep；菜单栏项宽 85pt，读屏标签“保持唤醒中，剩余 59 分钟”。停止后断言释放，显示“已停止，本应用不再阻止睡眠”。点“设置…”后面板收起，控制窗口切到设置页。按钮与“上次结束”行的读屏文本位于 AXAttributedDescription。验收后把场景恢复为“接电合盖”，留在未开启；本机记录了这次约 1 分钟的手动停止结果。
+- 没有开启合盖会话、没有全局 pmset 写入、没有物理合盖或拔电操作。
+- [v0.3.0 Pre-release](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.3.0) 已于 2026-10-15 公开，tag 指向 `e746cc4`；DMG（约 2.4 MiB）、ZIP（约 2.0 MiB）与 SHA256SUMS.txt 上传后回下载校验通过，与安装版为同次构建。仍是 Apple Development 签名、未公证的体验包。
+
+下一步：用户日常使用时观察菜单栏面板与刘海遮挡；物理合盖与多机型矩阵、Windows 去掉首次拦截页、Developer ID 与公证仍按既有计划接续。
