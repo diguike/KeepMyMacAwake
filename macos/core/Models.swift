@@ -25,19 +25,19 @@ public enum StopReason: String, Codable {
     case thermalCritical, thermalSerious, telemetryUnknown, clockChanged, backendChanged, recovered
     public var message: String {
         switch self {
-        case .networkDisconnected: return "网络已断开，请联网后重新开启"
-        case .manual: return "已手动停止"
-        case .expired: return "设定时间已到"
-        case .disconnected: return "App 与后台组件断开连接"
-        case .heartbeatLost: return "App 长时间未响应，已自动停止"
+        case .networkDisconnected: return "网络已断开"
+        case .manual: return "手动停止"
+        case .expired: return "时间到"
+        case .disconnected: return "与后台组件断开连接"
+        case .heartbeatLost: return "App 无响应"
         case .powerDisconnected: return "电源已断开"
-        case .lowBattery: return "电量降到设定下限"
-        case .thermalCritical: return "Mac 散热状态严重"
-        case .thermalSerious: return "Mac 散热状态持续较高"
-        case .telemetryUnknown: return "无法读取电源或散热状态"
-        case .clockChanged: return "系统时间发生明显变化"
+        case .lowBattery: return "电量达到下限"
+        case .thermalCritical: return "散热状态严重"
+        case .thermalSerious: return "散热状态持续较高"
+        case .telemetryUnknown: return "无法读取电源、网络或散热状态"
+        case .clockChanged: return "系统时间被更改"
         case .backendChanged: return "系统睡眠设置被其他程序修改"
-        case .recovered: return "已还原上次遗留的睡眠设置"
+        case .recovered: return "已恢复上次遗留的睡眠设置"
         }
     }
 }

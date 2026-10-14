@@ -13,7 +13,7 @@ import AwakeShared
     @Published var screenMode = "自动熄屏" { didSet { savePreferences() } }
     @Published var showCountdown = true { didSet { savePreferences() } }
     @Published private(set) var notifyOnEnd = false
-    @Published var notificationMessage = "只提醒保持唤醒已结束，不代表 AI 任务已完成。"
+    @Published var notificationMessage = "不代表 AI 任务已完成"
     var keepDisplay: Bool { get { screenMode == "保持常亮" } set { screenMode = newValue ? "保持常亮" : "自动熄屏" } }
     var nightMode: Bool { get { screenMode == "夜间柔光" } set { screenMode = newValue ? "夜间柔光" : "自动熄屏" } }
     @Published var dimAmount = 0.94 { didSet { savePreferences() } }
@@ -29,6 +29,8 @@ import AwakeShared
     @Published var helperState = "未检查"
     @Published var helperConnected = false
     @Published var needsRecovery = false
+    /// Shown under "睡眠设置未恢复"; the helper's own explanation.
+    @Published private(set) var recoveryReason: String?
     @Published var startedAt: Date?
     @Published var sessionSeconds: Double = 0
     @Published var loginEnabled = false
@@ -60,6 +62,9 @@ import AwakeShared
     private var idlePolicy = SafetyPolicy()
     var policy: SafetyPolicy { SafetyPolicy(requireAC: requireAC, minimumBattery: minimumBattery, requireNetwork: requireNetwork) }
     var hasSession: Bool { active || idleStart != nil || leaseID != nil }
+    /// True while a closed-lid lease from the helper is in effect.
+    var leaseIDActive: Bool { active && leaseID != nil }
+    var now: Date { readClock().wall }
     var helperBuildEnabled: Bool { Bundle.main.object(forInfoDictionaryKey: "AwakeHelperEnabled") as? Bool == true }
     private var serviceStatus: SMAppService.Status {
         if let readHelperStatus { return readHelperStatus() }
@@ -128,15 +133,15 @@ import AwakeShared
         switch phase {
         case .off: return "未开启"
         case .on: return "保持唤醒中"
-        case .confirming: return "正在确认"
+        case .confirming: return "正在确认…"
         case .recovery: return "需要恢复"
         }
     }
     var statusTitle: String {
-        if needsRecovery { return "需要恢复睡眠设置" }
-        if hasSession && !active { return "正在确认恢复" }
+        if needsRecovery { return "睡眠设置未恢复" }
+        if hasSession && !active { return "正在确认…" }
         if !active { return readinessTitle }
-        if unlimitedSession { return "直到手动停止" }
+        if unlimitedSession { return "不限时" }
         return SessionText.timer(ceil(remaining))
     }
     /// Read from the injected clock so tests and screenshots stay deterministic.
@@ -145,34 +150,53 @@ import AwakeShared
         return max(0, readClock().wall.timeIntervalSince(startedAt))
     }
     var startTimeText: String? { startedAt.map { SessionText.clock($0) } }
+    /// "23:10–07:10" for a timed session; just the start for an unlimited one.
+    var periodText: String? {
+        guard active, let startedAt else { return nil }
+        if unlimitedSession { return SessionText.clock(startedAt) }
+        return SessionText.clock(startedAt) + "–" + SessionText.clock(startedAt.addingTimeInterval(sessionSeconds))
+    }
     var powerText: String {
         switch (sample.onAC, sample.batteryPercent) {
-        case (true?, let percent?): return "已接电 · \(percent)%"
+        case (true?, let percent?): return "已接电 \(percent)%"
         case (true?, nil): return "已接电"
-        case (false?, let percent?): return "使用电池 · \(percent)%"
-        case (false?, nil): return "使用电池 · 电量未知"
+        case (false?, let percent?): return "电池 \(percent)%"
+        case (false?, nil): return "电池，电量未知"
         case (nil, _): return "未知"
         }
     }
     var networkText: String { sample.networkAvailable.map { $0 ? "已连接" : "未连接" } ?? "未知" }
+    /// Orange only for unknown values or a value that breaks the current rules.
+    var powerWarning: Bool { sample.onAC == nil || (requireAC && sample.onAC == false) }
+    var networkWarning: Bool { sample.networkAvailable == nil ? requireNetwork : requireNetwork && sample.networkAvailable == false }
+    var thermalWarning: Bool { [.unknown, .serious, .critical].contains(sample.thermal) }
+    static let networkHelp = "只表示系统有可用网络，不代表能连上互联网或任务服务"
+    static let thermalHelp = "系统报告的散热等级，不是温度。较高超过 30 秒、严重或读不到时停止"
     /// Idle title says what would block a start instead of a generic ready state.
     var readinessTitle: String {
-        if lidMode && !helperBuildEnabled { return "未签名构建无法合盖" }
-        if lidMode && serviceStatus != .enabled { return "合盖需先授权后台组件" }
+        if lidMode && !helperBuildEnabled { return "未签名构建不支持合盖" }
+        if lidMode && serviceStatus != .enabled { return "合盖需要后台组件" }
         if requireAC && sample.onAC == false { return "请接通电源" }
         var evaluator = SafetyEvaluator()
         if let reason = evaluator.evaluate(sample, policy: policy, now: readClock().continuous) { return reason.message }
-        return "可以开始"
+        return "未开启"
+    }
+    /// True when the idle title names something that would prevent a start.
+    var isBlocked: Bool { !active && !hasSession && readinessTitle != "未开启" }
+    /// What the person may do while it runs; lid-closed mode is the one to make obvious.
+    var runningHint: String? {
+        guard active else { return nil }
+        return leaseIDActive ? "可以合盖" : "可以锁屏，请勿合盖"
     }
     /// One line under the title: the promise of the running session, or what a start will request.
     var statusDetail: String {
         if active {
-            if unlimitedSession { return "\(sceneDisplayName) · 直到手动停止" }
-            guard let startedAt else { return "\(sceneDisplayName) · 保持唤醒中" }
-            return "\(sceneDisplayName) · " + SessionText.endTime(startedAt.addingTimeInterval(sessionSeconds), now: readClock().wall)
+            guard let startedAt else { return "" }
+            if unlimitedSession { return "\(SessionText.clock(startedAt)) 开始" }
+            return SessionText.endTime(startedAt.addingTimeInterval(sessionSeconds), now: readClock().wall)
         }
-        let value = preferences
-        return "\(sceneDisplayName)\(value.isCustomized ? "（已调整）" : "") · \(value.summary)"
+        if needsRecovery { return recoveryReason ?? "" }
+        return preferences.brief
     }
     var sceneDisplayName: String { ScenePreset.named(scene)?.displayName ?? scene }
     private func recordEnd(_ reason: String) {
@@ -195,7 +219,7 @@ import AwakeShared
             guard generation == notificationGeneration else { return }
             notifyOnEnd = granted
             defaults?.set(notifyOnEnd, forKey: "notifyOnEnd.v1")
-            notificationMessage = notifyOnEnd ? "结束时发送系统通知；是否响铃取决于你的通知设置。" : "通知未获允许，可在系统设置 → 通知中开启。"
+            notificationMessage = notifyOnEnd ? "不代表 AI 任务已完成" : "请在“系统设置 > 通知”中允许"
         } catch { if generation == notificationGeneration { notificationMessage = "通知授权失败：\(error.localizedDescription)" } }
     }
     var sessionProgress: Double { active && !unlimitedSession && sessionSeconds > 0 ? max(0, min(1, remaining / sessionSeconds)) : 1 }
@@ -215,36 +239,35 @@ import AwakeShared
         message = ""
     }
     func acknowledge() { onboarded = true; defaults?.set(true, forKey: "onboarded") }
+    static let unsignedLid = "未签名构建不支持合盖，请使用 GitHub 发布版"
     func updateAuthorization() {
         publish(\.helperConnected, false)
         if !helperBuildEnabled && readHelperStatus == nil {
-            publish(\.helperState, "未签名构建不可用")
+            publish(\.helperState, "不可用（未签名）")
             return
         }
         switch serviceStatus {
-        case .enabled: publish(\.helperState, "已授权，正在检查连接")
-        case .requiresApproval: publish(\.helperState, "等待在系统设置中授权")
+        case .enabled: publish(\.helperState, "正在连接…")
+        case .requiresApproval: publish(\.helperState, "等待授权")
         case .notRegistered, .notFound: publish(\.helperState, "未安装")
-        @unknown default: publish(\.helperState, "授权状态未知")
+        @unknown default: publish(\.helperState, "未知")
         }
     }
     func authorize() {
         guard !busy else { return }
-        guard helperBuildEnabled else { message = "当前是未签名构建。合盖功能需要使用签名证书构建的版本。"; return }
+        guard helperBuildEnabled else { message = Self.unsignedLid; return }
         actionGeneration &+= 1
         do {
             if daemon.status == .notRegistered || daemon.status == .notFound { try daemon.register() }
         } catch {
             // macOS may register the daemon while returning EPERM until the user approves it.
             guard daemon.status == .requiresApproval else {
-                updateAuthorization(); message = "授权失败：\(error.localizedDescription)"; return
+                updateAuthorization(); message = "无法安装后台组件：\(error.localizedDescription)"; return
             }
         }
         updateAuthorization()
-        if helperNeedsApproval {
-            message = "请在系统设置中允许 KeepMyMacAwake 在后台运行，并用触控 ID 或登录密码确认。"
-            SMAppService.openSystemSettingsLoginItems()
-        }
+        message = ""
+        if helperNeedsApproval { SMAppService.openSystemSettingsLoginItems() }
         Task { await refresh() }
     }
     func installHelper() async { authorize(); lastHelperPoll = nil; await refresh() }
@@ -253,7 +276,7 @@ import AwakeShared
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             loginEnabled = SMAppService.mainApp.status == .enabled
-            if enabled && !loginEnabled { message = "登录时启动需要在系统设置中允许" }
+            if enabled && !loginEnabled { message = "请在“系统设置 > 通用 > 登录项与扩展”中允许" }
         } catch { message = error.localizedDescription; loginEnabled = SMAppService.mainApp.status == .enabled }
     }
     func start() async {
@@ -266,25 +289,23 @@ import AwakeShared
         let now = readClock()
         sample = readSample()
         safety = SafetyEvaluator()
-        if let reason = safety.evaluate(sample, policy: policy, now: now.continuous) { message = reason.message; return }
-        message = "正在开启…"
+        if let reason = safety.evaluate(sample, policy: policy, now: now.continuous) { message = "无法开始：\(reason.message)"; return }
+        message = ""
         do {
             if lidMode {
                 guard serviceStatus == .enabled else {
-                    message = "合盖需要先安装并授权后台组件"; updateAuthorization(); return
+                    message = "合盖需要后台组件"; updateAuthorization(); return
                 }
                 let reply = try await send(HelperRequest(.acquire, duration: duration, policy: policy))
                 guard reply.error == nil, reply.status.phase == .active, let id = reply.status.leaseID else {
-                    message = reply.error ?? reply.status.error ?? "后台组件未确认开启"; return
+                    message = "无法开始：\(reply.error ?? reply.status.error ?? "后台组件没有确认")"; return
                 }
                 leaseID = id; remaining = reply.status.remainingSeconds ?? 0
                 if keepDisplay || nightMode { try assertion.start(keepDisplay: true) }
                 helperState = "已连接"; helperConnected = true
-                message = "已就绪，可以合盖 · 请放在通风处"
             } else {
                 try assertion.start(keepDisplay: keepDisplay || nightMode)
                 idleStart = now; idleDuration = duration; idlePolicy = policy; remaining = idleDuration
-                message = nightMode ? "屏幕已调暗，停止后恢复 · 请保持开盖" : "可以锁屏离开 · 请保持开盖"
             }
             startedAt = now.wall; sessionSeconds = duration
             unlimitedSession = duration == 0
@@ -294,7 +315,7 @@ import AwakeShared
             if !onboarded { acknowledge() }
         } catch {
             dimmer.stop(); try? assertion.stop()
-            message = "开启失败：\(error.localizedDescription)"; client.disconnect()
+            message = "无法开始：\(error.localizedDescription)"; client.disconnect()
         }
     }
     func extendSession() async {
@@ -311,8 +332,8 @@ import AwakeShared
                 }
                 remaining = reply.status.remainingSeconds ?? 0
             } else if idleStart != nil { idleDuration += 900; remaining += 900 }
-            sessionSeconds += 900; message = "已延长 15 分钟"
-        } catch { message = "延长失败：\(error.localizedDescription)" }
+            sessionSeconds += 900; message = ""
+        } catch { message = "无法延长：\(error.localizedDescription)" }
     }
     @discardableResult func stop() async -> Bool {
         guard !busy else { return false }
@@ -335,13 +356,13 @@ import AwakeShared
             }
             if active { recordEnd(StopReason.manual.message) }
             idleStart = nil; active = false; remaining = 0; unlimitedSession = false; needsRecovery = false; startedAt = nil
-            message = "已停止，本应用不再阻止睡眠"; return true
+            recoveryReason = nil; message = ""; return true
         } catch {
-            active = false; message = "恢复未确认：\(error.localizedDescription)"; client.disconnect(); return false
+            active = false; message = "无法确认睡眠设置已恢复：\(error.localizedDescription)"; client.disconnect(); return false
         }
     }
     func recover() async {
-        guard helperBuildEnabled || requestHelper != nil else { message = "此预览没有合盖会话；请用已安装的签名 App 管理后台组件。"; return }
+        guard helperBuildEnabled || requestHelper != nil else { message = Self.unsignedLid; return }
         guard !busy, !active, idleStart == nil else { return }
         actionGeneration &+= 1
         busy = true; defer { busy = false }
@@ -350,11 +371,11 @@ import AwakeShared
             guard reply.error == nil, reply.status.phase == .off else {
                 throw AwakeError.backend(reply.error ?? reply.status.error ?? "恢复尚未完成")
             }
-            leaseID = nil; needsRecovery = false; message = "已确认睡眠设置已恢复"
+            leaseID = nil; needsRecovery = false; recoveryReason = nil; message = "睡眠设置已恢复"
         } catch { message = "恢复失败：\(error.localizedDescription)"; client.disconnect() }
     }
     func removeHelper() async {
-        guard helperBuildEnabled else { message = "请用已安装的签名 App 移除后台组件。"; return }
+        guard helperBuildEnabled else { message = Self.unsignedLid; return }
         guard await stop() else { return }
         busy = true; defer { busy = false }
         do {
@@ -364,7 +385,7 @@ import AwakeShared
                 throw AwakeError.backend(reply.error ?? reply.status.error ?? "睡眠设置未恢复，保留后台组件")
             }
             try await daemon.unregister()
-            client.disconnect(); updateAuthorization(); message = "已恢复睡眠设置并卸载后台组件"
+            client.disconnect(); updateAuthorization(); message = "后台组件已卸载"
         } catch { message = "卸载失败：\(error.localizedDescription)" }
     }
     func quit() async {
@@ -382,7 +403,7 @@ import AwakeShared
             if let reason = reason {
                 do {
                     try assertion.stop(); dimmer.stop(); idleStart = nil; active = false; unlimitedSession = false; remaining = 0
-                    message = "已停止：\(reason.message)"; recordEnd(reason.message)
+                    message = ""; recordEnd(reason.message)
                 }
                 catch { active = false; message = "无法取消睡眠阻止：\(error.localizedDescription)" }
             }
@@ -392,7 +413,7 @@ import AwakeShared
             updateAuthorization()
             if leaseID != nil {
                 publish(\.active, false); dimmer.stop(); try? assertion.stop()
-                publish(\.message, "后台组件授权已失效，无法确认睡眠设置是否已恢复")
+                publish(\.message, "后台组件授权已失效，无法确认睡眠设置已恢复")
             }
             return
         }
@@ -412,24 +433,22 @@ import AwakeShared
                 // A new connection cannot adopt a lease from an earlier process.
                 if leaseID != nil, reply.error == nil {
                     publish(\.active, true); publish(\.remaining, reply.status.remainingSeconds ?? 0)
-                    publish(\.message, "已就绪，可以合盖 · 请放在通风处")
-                } else { publish(\.active, false); publish(\.message, "后台有其他会话，等待结束或恢复") }
+                } else { publish(\.active, false); publish(\.message, "后台组件正被另一个会话使用，请等待它结束或恢复睡眠设置") }
             } else {
                 if leaseID != nil {
                     let reason = reply.status.stopReason?.message ?? "后台会话已结束"
-                    recordEnd(reason + (reply.status.phase == .recoveryRequired ? "；恢复未确认" : ""))
+                    recordEnd(reason + (reply.status.phase == .recoveryRequired ? "，睡眠设置未恢复" : ""))
                 }
                 publish(\.active, false); leaseID = nil; publish(\.remaining, 0); publish(\.unlimitedSession, false)
                 dimmer.stop(); try assertion.stop()
                 publish(\.needsRecovery, reply.status.phase == .recoveryRequired)
-                if reply.status.phase == .recoveryRequired { publish(\.message, "需要恢复：\(reply.status.error ?? "未知错误")") }
-                else if let reason = reply.status.stopReason { publish(\.message, "已停止：\(reason.message)") }
+                if reply.status.phase == .recoveryRequired { publish(\.recoveryReason, reply.status.error ?? "原因未知") }
             }
         } catch {
             guard generation == actionGeneration else { return }
             publish(\.helperConnected, false)
-            publish(\.active, false); dimmer.stop(); try? assertion.stop(); publish(\.helperState, "连接失败，状态未知")
-            if leaseID != nil { publish(\.message, "与后台组件失去联系；它会自动恢复睡眠设置，但尚未确认") }
+            publish(\.active, false); dimmer.stop(); try? assertion.stop(); publish(\.helperState, "连接失败（状态未知）")
+            if leaseID != nil { publish(\.message, "与后台组件失去联系，尚未确认睡眠设置已恢复") }
             client.disconnect()
         }
     }

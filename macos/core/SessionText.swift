@@ -10,13 +10,13 @@ public struct ScenePreset: Equatable {
     public let requireAC: Bool
     public let requireNetwork: Bool
     public var displayName: String { name == "有网时" ? "外出合盖" : name }
-    /// One short line for scene cards: when to use it and what it does.
+    /// Scene cards only state what differs from the others.
     public var tagline: String {
         switch name {
-        case "夜间": return "睡前开启 · 8 小时 · 调暗屏幕"
-        case "接电合盖": return "合上盖子 · 直到手动停止"
-        case "有网时": return "用电池合盖 · 断网即停"
-        default: return "离开一会儿 · 1 小时"
+        case "夜间": return "8 小时 · 屏幕调暗"
+        case "接电合盖": return "不限时"
+        case "有网时": return "2 小时 · 断网即停"
+        default: return "1 小时"
         }
     }
     public static let all = [
@@ -36,13 +36,18 @@ public struct ScenePreset: Equatable {
 
 public extension AwakePreferences {
     var durationText: String {
-        if durationMinutes == -1 { return "直到手动停止" }
+        if durationMinutes == -1 { return "不限时" }
         return SessionText.duration(Double((durationMinutes == 0 ? customMinutes : durationMinutes) * 60))
     }
-    /// What a start will request, e.g. "8 小时 · 需开盖 · 仅接电 · 调暗常亮".
+    /// Full rules for tooltips, e.g. "8 小时，需开盖，仅接电，屏幕调暗".
     var summary: String {
         [durationText, lidMode ? "可合盖" : "需开盖", requireAC ? "仅接电" : "可用电池",
-         requireNetwork ? "断网停止" : nil, SessionText.screenMode(screenMode)].compactMap { $0 }.joined(separator: " · ")
+         requireNetwork ? "断网即停" : nil, "屏幕" + SessionText.screenMode(screenMode)].compactMap { $0 }.joined(separator: "，")
+    }
+    /// Duration plus the one rule most worth noticing, e.g. "8 小时 · 调暗".
+    var brief: String {
+        let flag: String? = lidMode ? "合盖" : screenMode != "自动熄屏" ? SessionText.screenMode(screenMode) : requireNetwork ? "断网即停" : nil
+        return [durationText, flag].compactMap { $0 }.joined(separator: " · ")
     }
     /// True when the main rules differ from the chosen scene's defaults.
     var isCustomized: Bool {
@@ -59,19 +64,13 @@ public enum SessionText {
     /// specs/scenes.json; these are the names people see.
     public static func screenMode(_ mode: String) -> String {
         switch mode {
-        case "自动熄屏": return "允许熄屏"
-        case "保持常亮": return "屏幕常亮"
-        case "夜间柔光": return "调暗常亮"
+        case "自动熄屏": return "自动关闭"
+        case "保持常亮": return "常亮"
+        case "夜间柔光": return "调暗"
         default: return mode
         }
     }
-    public static func screenModeDetail(_ mode: String) -> String {
-        switch mode {
-        case "保持常亮": return "屏幕保持点亮，方便随时查看进度。"
-        case "夜间柔光": return "屏幕保持点亮，并盖上一层可调的暗色遮罩；不是硬件亮度调节。"
-        default: return "屏幕按系统设置自动关闭，Mac 继续运行。"
-        }
-    }
+    public static let screenModeHelp = "自动关闭：按系统设置关闭屏幕\n常亮：屏幕保持点亮\n调暗：保持点亮并加一层软件暗色遮罩，不调节硬件亮度"
     /// "01:05:09" for elapsed or remaining session time.
     public static func timer(_ seconds: Double) -> String {
         let value = max(0, Int(seconds.rounded(.down)))
@@ -81,11 +80,21 @@ public enum SessionText {
         let parts = calendar.dateComponents([.hour, .minute], from: date)
         return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
     }
-    /// "预计 07:30 结束", or "预计明天 07:30 结束" when the deadline crosses midnight.
+    /// "07:30 结束", "明天 07:30 结束" or "2 天后 00:10 结束".
     public static func endTime(_ end: Date, now: Date, calendar: Calendar = .current) -> String {
+        "\(dayPrefix(end, now: now, calendar: calendar))\(clock(end, calendar: calendar)) 结束"
+    }
+    /// When a past session ended: "07:10", "昨天 07:10" or "10/13 07:10".
+    public static func endedAt(_ end: Date, now: Date, calendar: Calendar = .current) -> String {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: end), to: calendar.startOfDay(for: now)).day ?? 0
+        if days == 0 { return clock(end, calendar: calendar) }
+        if days == 1 { return "昨天 " + clock(end, calendar: calendar) }
+        let parts = calendar.dateComponents([.month, .day], from: end)
+        return String(format: "%d/%d ", parts.month ?? 0, parts.day ?? 0) + clock(end, calendar: calendar)
+    }
+    private static func dayPrefix(_ end: Date, now: Date, calendar: Calendar) -> String {
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: end)).day ?? 0
-        let day = days == 0 ? " " : days == 1 ? "明天 " : " \(days) 天后 "
-        return "预计\(day)\(clock(end, calendar: calendar)) 结束"
+        return days <= 0 ? "" : days == 1 ? "明天 " : "\(days) 天后 "
     }
     public static func duration(_ seconds: Double) -> String {
         let minutes = Int(max(0, seconds) / 60)
@@ -98,15 +107,6 @@ public enum SessionText {
     public static func menuBar(remaining: Double) -> String {
         let minutes = Int(ceil(max(0, remaining) / 60))
         return minutes < 60 ? "\(minutes)m" : String(format: "%dh%02dm", minutes / 60, minutes % 60)
-    }
-    /// "10/13 23:10 – 10/14 07:10", or "10/14 01:10 – 02:10" within one day.
-    public static func span(start: Date, end: Date, calendar: Calendar = .current) -> String {
-        func day(_ date: Date) -> String {
-            let parts = calendar.dateComponents([.month, .day], from: date)
-            return String(format: "%d/%d", parts.month ?? 0, parts.day ?? 0)
-        }
-        let tail = calendar.isDate(start, inSameDayAs: end) ? clock(end, calendar: calendar) : "\(day(end)) \(clock(end, calendar: calendar))"
-        return "\(day(start)) \(clock(start, calendar: calendar)) – \(tail)"
     }
     /// Retained after a session ends so a returning user can see what happened.
     public static func lastResult(start: Date, end: Date, reason: String, calendar: Calendar = .current) -> String {

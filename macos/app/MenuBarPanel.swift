@@ -8,18 +8,10 @@ struct MenuBarPanel: View {
     @ObservedObject var model: AppModel
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 9) {
-                AppMark(size: 24)
-                Text("KeepMyMacAwake").font(.system(size: 13, weight: .semibold))
-                Spacer()
-                PhaseBadge(phase: model.phase, text: model.phaseText)
-            }
-            .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 10)
-            Divider()
             content
             Divider()
             HStack(spacing: 14) {
-                Button("控制窗口…") { open(.control) }
+                Button("更多选项…") { open(.control) }
                 Button("设置…") { open(.settings) }
                 Spacer()
                 Button("退出") { Task { await model.quit() } }.disabled(model.busy)
@@ -35,28 +27,19 @@ struct MenuBarPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             StatusHero(model: model, compact: true)
             VStack(alignment: .leading, spacing: 7) {
-                if model.active, let start = model.startTimeText {
-                    InfoRow(icon: "clock", title: "开始于", value: start)
-                    if !model.unlimitedSession, let elapsed = model.elapsedSeconds {
-                        TimelineView(.periodic(from: .now, by: 30)) { _ in
-                            InfoRow(icon: "hourglass", title: "已运行", value: SessionText.duration(model.elapsedSeconds ?? elapsed))
-                        }
-                    }
+                if let period = model.periodText {
+                    InfoRow(icon: "clock", title: model.unlimitedSession ? "开始于" : "时段", value: period)
+                    Divider().padding(.vertical, 2)
                 }
-                InfoRow(icon: "slider.horizontal.3", title: "规则", value: model.preferences.summary)
-                Divider().padding(.vertical, 2)
-                InfoRow(icon: model.sample.onAC == false ? "battery.50" : "bolt.fill", title: "电源", value: model.powerText,
-                        warning: model.sample.onAC == nil || (model.requireAC && model.sample.onAC == false))
-                InfoRow(icon: "wifi", title: "网络", value: model.networkText,
-                        warning: model.requireNetwork && model.sample.networkAvailable != true)
-                InfoRow(icon: "thermometer.medium", title: "散热", value: model.thermalDescription,
-                        warning: model.sample.thermal == .unknown || model.sample.thermal == .serious || model.sample.thermal == .critical)
-                if model.lidMode || model.helperConnected {
-                    InfoRow(icon: "laptopcomputer", title: "合盖组件", value: model.helperState, warning: model.lidMode && !model.helperConnected)
+                InfoRow(icon: model.sample.onAC == false ? "battery.50" : "bolt.fill", title: "电源", value: model.powerText, warning: model.powerWarning)
+                InfoRow(icon: "wifi", title: "网络", value: model.networkText, warning: model.networkWarning).help(AppModel.networkHelp)
+                InfoRow(icon: "thermometer.medium", title: "散热", value: model.thermalDescription, warning: model.thermalWarning).help(AppModel.thermalHelp)
+                if model.lidMode {
+                    InfoRow(icon: "puzzlepiece.extension", title: "后台组件", value: model.helperState, warning: !model.helperConnected)
                 }
             }
             .awakeCard(padding: 12, radius: 12)
-            if !model.active, let last = model.lastSession { LastSessionView(result: last).padding(.horizontal, 2) }
+            if !model.hasSession, let last = model.lastSession { LastSessionView(result: last, now: model.now).padding(.horizontal, 2) }
             if !model.hasSession {
                 HStack(spacing: 6) {
                     ForEach(AwakeStyle.scenes, id: \.name) { scene in
