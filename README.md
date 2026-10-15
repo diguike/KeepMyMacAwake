@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/icon.png" alt="" width="112">
+</p>
+
 <h1 align="center">KeepMyMacAwake</h1>
 
 <p align="center">
@@ -6,9 +10,16 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/diguike/KeepMyMacAwake/releases"><img src="https://img.shields.io/github/v/release/diguike/KeepMyMacAwake?include_prereleases&label=%E4%B8%8B%E8%BD%BD&color=FF6A2B" alt="下载"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-FF6A2B?logo=apple&logoColor=white" alt="macOS 14+">
+  <a href="https://github.com/diguike/KeepMyMacAwake/actions/workflows/ci.yml"><img src="https://github.com/diguike/KeepMyMacAwake/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-FEA82F" alt="MIT"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/diguike/KeepMyMacAwake/releases">下载 Mac 版</a> ·
   <a href="README.en.md">English</a> ·
-  原生 macOS 菜单栏 App · 免费开源（MIT）
+  原生 macOS 菜单栏 App · 免费开源
 </p>
 
 <p align="center">
@@ -22,12 +33,18 @@
 
 你让 Claude Code、Codex 或 Cursor 跑一个重构、一轮长测试，或者开着一个大文件下载，然后去吃饭、开会、睡觉。回来却发现 Mac 早就睡着了，任务停在半路。
 
-KeepMyMacAwake 把“别让 Mac 睡着”做成一个按钮：选一个场景，点“开始”。到点自动结束，Mac 恢复正常睡眠，不用记着去改系统设置，也不用开终端敲 `caffeinate`。
+KeepMyMacAwake 把“别让 Mac 睡着”做成一个按钮：到点自动结束，Mac 恢复正常睡眠。不用记着去改系统设置，也不用开终端敲 `caffeinate`。
+
+## 三步用起来
+
+1. **选场景**：日常、夜间、接电合盖或外出合盖，时长和规则都能再调。
+2. **点“开始”**：之后就可以锁屏离开。合盖场景第一次使用前，先按提示安装一次后台组件。
+3. **到点自动结束**：Mac 恢复正常睡眠。中途想看进度、停止或延长 15 分钟，点菜单栏的杯子图标即可。
 
 ## 功能
 
 - **一键保持唤醒**：30 分钟、1/2/8 小时、自定义 1–1440 分钟，或不限时；运行中可随时延长 15 分钟。
-- **菜单栏信息面板**：点击菜单栏杯子图标，查看剩余时间、预计结束时刻、已运行时长、电源与电量、网络、散热状态和上次结束原因，也能直接开始、停止或延长。
+- **菜单栏信息面板**：剩余时间、预计结束时刻、已运行时长、电源与电量、网络、散热状态和上次结束原因，一眼看全，也能直接开始、停止或延长。
 - **可以锁屏离开**：不改变锁屏规则，锁屏后任务继续运行。
 - **合盖继续运行**：首次授权一次后台组件后，接电或用电池都能合盖运行。
 - **三种屏幕模式**：自动关闭、常亮、调暗（夜里看进度不刺眼）。
@@ -56,6 +73,8 @@ KeepMyMacAwake 把“别让 Mac 睡着”做成一个按钮：选一个场景，
 
 > 首次合盖前，建议先开盖设 1 分钟试一次，确认到点能正常结束。
 
+**从旧版升级**：先在旧版“设置 → 后台组件”点“卸载后台组件…”并确认（0.2.x 为“停止并移除组件”），再用新版替换 App，打开后在合盖场景点“安装后台组件”。作者本机实测升级后原有的系统授权会保留；如果系统再次要求，请本人用触控 ID 或密码确认。
+
 ## 常见问题
 
 **菜单栏里找不到杯子图标？**
@@ -78,11 +97,21 @@ KeepMyMacAwake 把“别让 Mac 睡着”做成一个按钮：选一个场景，
 
 ## 当前状态
 
-- Mac 最新体验版 [v0.4.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.4.0)：中性配色、数字为主的状态区、菜单栏信息面板。使用开发证书签名，尚未公证。
+- Mac 最新体验版 [v0.5.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.5.0)：暖阳配色、数字为主的状态区、菜单栏信息面板。使用开发证书签名，尚未公证。
 - 普通保持唤醒、到期恢复和夜间调暗都已在本机实测。作者在自用 MacBook 上反馈合盖可用；不同机型的完整合盖验收矩阵仍在进行，详见 [实际进度](docs/status.md)。
 - Windows 版是同仓库的开发预览（WPF + 系统托盘，仅接电开盖），暂无公开 Release，见 [Windows 说明](windows/README.md)。
 
-## 从源码构建
+## 技术说明与边界
+
+- 普通模式使用公开的 IOPMAssertion 阻止闲置睡眠，停止即释放。
+- 合盖模式由签名的独立 helper 写入系统级 `pmset disablesleep`，带有限期租约、20 秒失联截止和持久化恢复记录；发现其他工具已启用时拒绝接管。请避免同时使用多个合盖保活工具。
+- “恢复”只撤销本应用的改动，不保证 Mac 立即睡眠（其他 App 可能仍在阻止睡眠）。
+- 屏幕“调暗”是临时的软件暗色遮罩，不调节硬件亮度。“已连接”表示系统有可用网络，不保证互联网或任务服务可达。
+
+## 参与开发
+
+<details>
+<summary><b>从源码构建（Mac）</b></summary>
 
 要求 macOS 14+、Xcode 或 Command Line Tools（Swift 5.9+）。不需要生成 Xcode 工程。
 
@@ -103,9 +132,18 @@ CONFIGURATION=release SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' ./sc
 
 把签名版放到 `/Applications` 后再授权后台组件；首次合盖测试按 [Mac 交接清单](docs/mac-handoff.md) 操作。签名和公证见 [分发说明](docs/distribution.md)；仓库不包含任何证书或凭据。
 
-README 截图由测试离屏渲染：`AWAKE_SCREENSHOTS=/tmp/shots swift test --filter ScreenshotTests`。
+README 展示图先由测试离屏渲染，再合成为桌面效果图：
 
-### Windows 开发预览
+```sh
+AWAKE_SCREENSHOTS=/tmp/shots swift test --filter ScreenshotTests
+swift macos/scripts/compose-overview.swift /tmp/shots/control-idle-light.png /tmp/shots/menubar-active-light.png docs/images/overview-light.png light
+swift macos/scripts/compose-overview.swift /tmp/shots/control-idle-dark.png /tmp/shots/menubar-active-dark.png docs/images/overview-dark.png dark
+```
+
+</details>
+
+<details>
+<summary><b>Windows 开发预览</b></summary>
 
 需要 .NET 10 SDK。Windows 上运行：
 
@@ -118,7 +156,10 @@ dotnet run --project windows/app-tests/Awake.App.Tests.csproj -c Release
 
 Mac 可交叉打包 Windows ZIP 和安装器，GitHub Actions 也能生成 x64 / ARM64 预览包与界面报告，见 [Mac 双端工作流](docs/mac-windows-workflow.md) 和 [GitHub 打包说明](docs/github-windows-build.md)。预览只开放接电、开盖使用，合盖与电池能力保持关闭。
 
-### 目录
+</details>
+
+<details>
+<summary><b>目录结构</b></summary>
 
 | 目录 | 内容 |
 | --- | --- |
@@ -128,15 +169,8 @@ Mac 可交叉打包 Windows ZIP 和安装器，GitHub Actions 也能生成 x64 /
 | `scripts/` | 构建、打包、发布入口 |
 | `docs/` | 进度、设计、验证与决策记录 |
 
-## 技术说明与边界
+</details>
 
-- 普通模式使用公开的 IOPMAssertion 阻止闲置睡眠，停止即释放。
-- 合盖模式由签名的独立 helper 写入系统级 `pmset disablesleep`，带有限期租约、20 秒失联截止和持久化恢复记录；发现其他工具已启用时拒绝接管。请避免同时使用多个合盖保活工具。
-- “恢复”只撤销本应用的改动，不保证 Mac 立即睡眠（其他 App 可能仍在阻止睡眠）。
-- 屏幕“调暗”是临时的软件暗色遮罩，不调节硬件亮度。“已连接”表示系统有可用网络，不保证互联网或任务服务可达。
-
-## 文档
-
-[实际进度](docs/status.md) · [产品范围](docs/product.md) · [技术设计](docs/architecture.md) · [验证矩阵](docs/validation.md) · [设计决策](docs/decisions.md) · [体验评审](docs/ux-review.md) · [Mac 交接](docs/mac-handoff.md) · [Windows 方案](docs/windows-plan.md)
+文档：[实际进度](docs/status.md) · [产品范围](docs/product.md) · [技术设计](docs/architecture.md) · [验证矩阵](docs/validation.md) · [设计决策](docs/decisions.md) · [体验评审](docs/ux-review.md) · [Mac 交接](docs/mac-handoff.md) · [Windows 方案](docs/windows-plan.md)
 
 参与开发前请读 [AGENTS.md](AGENTS.md) 和 [CONTRIBUTING.md](CONTRIBUTING.md)。由 [递归客](https://github.com/diguike) 开源，[MIT 许可证](LICENSE)。觉得好用的话，欢迎点个 Star，或把它分享给同样在跑长任务的朋友。

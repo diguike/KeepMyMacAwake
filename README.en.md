@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/icon.png" alt="" width="112">
+</p>
+
 <h1 align="center">KeepMyMacAwake</h1>
 
 <p align="center">
@@ -6,9 +10,16 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/diguike/KeepMyMacAwake/releases"><img src="https://img.shields.io/github/v/release/diguike/KeepMyMacAwake?include_prereleases&label=download&color=FF6A2B" alt="Download"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-FF6A2B?logo=apple&logoColor=white" alt="macOS 14+">
+  <a href="https://github.com/diguike/KeepMyMacAwake/actions/workflows/ci.yml"><img src="https://github.com/diguike/KeepMyMacAwake/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-FEA82F" alt="MIT"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/diguike/KeepMyMacAwake/releases">Download for Mac</a> ·
   <a href="README.md">中文</a> ·
-  Native macOS menu bar app · Free and open source (MIT)
+  Native macOS menu bar app · Free and open source
 </p>
 
 <p align="center">
@@ -24,7 +35,13 @@
 
 You ask Claude Code, Codex or Cursor to run a long refactor or test suite, or start a large download, then step away for lunch, a meeting or the night. When you come back, the Mac fell asleep and the task stopped halfway.
 
-KeepMyMacAwake turns "don't let the Mac sleep" into one button: pick a scene, press start. When the time is up it ends by itself and the Mac sleeps normally again — no settings to remember to revert, no `caffeinate` in a terminal.
+KeepMyMacAwake turns "don't let the Mac sleep" into one button. When the time is up it ends by itself and the Mac sleeps normally again — no settings to remember to revert, no `caffeinate` in a terminal.
+
+## Three steps
+
+1. **Pick a scene**: Daily, Night, Lid closed on power, or Lid closed on the go. Duration and rules can be adjusted.
+2. **Press Start** and lock the screen. Before the first closed-lid session, install the background component when prompted.
+3. **It ends on time** and your Mac sleeps normally again. To check progress, stop, or add 15 minutes, click the cup icon in the menu bar.
 
 ## Features
 
@@ -52,13 +69,34 @@ KeepMyMacAwake turns "don't let the Mac sleep" into one button: pick a scene, pr
 3. Preview builds are signed with a development certificate and not notarized yet. If macOS blocks the first launch, choose **Open Anyway** in System Settings → Privacy & Security ([Apple guide](https://support.apple.com/en-us/102445)).
 4. For closed-lid use, pick a lid scene, install the background component, allow KeepMyMacAwake in System Settings → General → Login Items & Extensions, and confirm with Touch ID or your password. Start once the component shows as connected.
 
+**Upgrading**: in the old version, uninstall the background component under Settings (卸载后台组件…), replace the app, then install the component again from a lid scene. In the author's tests the existing system approval was kept.
+
 Use it on a ventilated desk, never inside a bag. The thermal state comes from macOS and is not a temperature reading. KeepMyMacAwake keeps your Mac awake; it does not decide whether your AI task finished.
+
+## FAQ
+
+**Can't find the cup icon in the menu bar?** On MacBooks with a notch, extra menu bar icons can hide behind it. Quit a few menu bar apps or ⌘-drag the icon to the right. The control window that opens with the app can do everything too.
+
+**Does it affect lock-screen or company device policies?** No. It only prevents idle sleep; it does not change lock-screen rules or bypass device management.
+
+**How do I uninstall it?** Uninstall the background component under Settings first, then move the app to the Trash. Don't delete or move the app while a session is running.
 
 ## Status
 
-The latest preview is [v0.4.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.4.0), with a neutral, number-first design and the menu bar status panel; it is signed with a development certificate and not notarized yet. Ordinary keep-awake, expiry and night dimming are tested on a real Mac; closed-lid mode has worked in the author's own use, while a full multi-model validation matrix is still in progress ([status](docs/status.md), in Chinese). A Windows developer preview (WPF + system tray, plugged in with the lid open only) lives in the same repository without a public release.
+The latest preview is [v0.5.0](https://github.com/diguike/KeepMyMacAwake/releases/tag/v0.5.0), with a warm orange theme, a number-first status card and the menu bar status panel; it is signed with a development certificate and not notarized yet. Ordinary keep-awake, expiry and night dimming are tested on a real Mac; closed-lid mode has worked in the author's own use, while a full multi-model validation matrix is still in progress ([status](docs/status.md), in Chinese). A Windows developer preview (WPF + system tray, plugged in with the lid open only) lives in the same repository without a public release.
+
+## How it works
+
+- Ordinary mode holds a public IOPMAssertion to prevent idle sleep and releases it when stopped.
+- Closed-lid mode uses a signed, independent helper that sets the system-wide `pmset disablesleep`, with a time-limited lease, a 20-second disconnect deadline and a persisted recovery record. It refuses to take over if another tool already enabled it.
+- Dimming is a temporary software overlay, not a hardware brightness change. "Connected" means macOS has a usable network path, not that the internet or your task's service is reachable.
 
 ## Build from source
+
+<details>
+<summary><b>Mac</b></summary>
+
+Requires macOS 14+ and Xcode or the Command Line Tools (Swift 5.9+).
 
 ```sh
 git clone https://github.com/diguike/KeepMyMacAwake.git
@@ -73,5 +111,16 @@ The default build is unsigned and supports lid-open use only. Closed-lid mode ne
 ```sh
 CONFIGURATION=release SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' ./scripts/build-macos.sh
 ```
+
+README images are rendered offscreen by `AWAKE_SCREENSHOTS=/tmp/shots swift test --filter ScreenshotTests` and composed with `macos/scripts/compose-overview.swift`.
+
+</details>
+
+<details>
+<summary><b>Windows developer preview</b></summary>
+
+Requires the .NET 10 SDK. See [windows/README.md](windows/README.md) and [the GitHub build guide](docs/github-windows-build.md) (in Chinese).
+
+</details>
 
 See [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. Made by [diguike](https://github.com/diguike), released under the [MIT License](LICENSE). If it helps you, a star or a share is very welcome.
