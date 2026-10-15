@@ -329,7 +329,7 @@ main CI 产物可直接下载：[Windows x64 包](https://github.com/diguike/Kee
 
 ### 0.5.0 合入与本机安装
 
-- 推送前发现本机登录钥匙串已于 2026-10-15 19:02 被系统重置（旧钥匙串改名为 `login_renamed_1.keychain-db`，用户不记得旧密码，决定不再使用）：`gh` token 失效，也没有可用签名身份。用户经 GitHub 设备码重新登录；在 Xcode 登录 Apple 账号后为团队 Beijing Meikan Technology（4B2XHQUG8Z）新建 Apple Development 证书，钥匙串访问由用户本人输入登录密码并选“始终允许”。新证书名称仍为 `Apple Development: chaoyang peng (UZV263XYX9)`，App 的 designated requirement 与 0.4.0 完全相同。曾临时把旧钥匙串加入查找列表，已恢复为只含当前登录钥匙串。
+- 推送前发现本机登录钥匙串被系统重置：`gh` token 失效，原签名证书的私钥也不可用。用户经 GitHub 设备码重新登录；在 Xcode 登录 Apple 账号后为原团队新建 Apple Development 证书，钥匙串访问由用户本人输入密码并选“始终允许”。新证书名称不变，App 的 designated requirement 与 0.4.0 完全相同，后台组件校验条件不变。
 - [PR #11](https://github.com/diguike/KeepMyMacAwake/pull/11) 的 [push CI #38786393060](https://github.com/diguike/KeepMyMacAwake/actions/runs/38786393060) 与 [PR CI #38786427451](https://github.com/diguike/KeepMyMacAwake/actions/runs/38786427451) 共 10 个任务全部通过，合入 main `76301b2`，源码树与 `4b30dc0` 一致；合并后的 [main CI #38787374608](https://github.com/diguike/KeepMyMacAwake/actions/runs/38787374608) 五个任务全部通过。
 - 从 main 用新证书执行 `scripts/release-macos.sh`：0.5.0 / build 8 通用包，DMG（约 2.6 MiB）、ZIP（约 2.2 MiB）校验、只读挂载与解包签名检查、双架构检查通过。
 - 升级：0.4.0 空闲（无断言、SleepDisabled 0）。通过辅助功能接口在其设置页点“卸载后台组件…”，确认框按钮读回为中文“取消 / 卸载”，确认后读回“后台组件已卸载”、状态“未安装”，helper 退出、SleepDisabled 0；点“退出”正常退出后备份到 `dist/previous-0.4.0.app`（不提交）。安装 0.5.0，严格签名通过；主程序哈希在安装版、dist 与 ZIP 内三处一致，helper 哈希与 ZIP 内一致。
