@@ -12,10 +12,12 @@ for (size, scale) in sizes {
     let context = NSGraphicsContext.current!.cgContext
     context.scaleBy(x: CGFloat(pixels) / 1024, y: CGFloat(pixels) / 1024)
     let background = NSBezierPath(roundedRect: NSRect(x: 56, y: 56, width: 912, height: 912), xRadius: 210, yRadius: 210)
-    // Graphite with a white cup; color is left to the system and to state.
-    NSGradient(starting: NSColor(white: 0.06, alpha: 1), ending: NSColor(white: 0.25, alpha: 1))!.draw(in: background, angle: 75)
-    NSColor(white: 1, alpha: 0.10).setStroke(); background.lineWidth = 3; background.stroke()
-    let moonColor = NSColor(white: 0.80, alpha: 1)
+    // Avatar orange with a white cup, white steam and a cream moon.
+    func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor { NSColor(srgbRed: r / 255, green: g / 255, blue: b / 255, alpha: 1) }
+    NSGradient(starting: rgb(0xEE, 0x4F, 0x16), ending: rgb(0xFF, 0x8C, 0x4E))!.draw(in: background, angle: 75)
+    NSColor(white: 1, alpha: 0.18).setStroke(); background.lineWidth = 3; background.stroke()
+    let moonColor = rgb(0xFF, 0xF1, 0xD6)
+    let steamColor = NSColor(white: 1, alpha: 0.85)
     // Crescent: a disc with an offset disc clipped out.
     NSGraphicsContext.saveGraphicsState()
     let cutout = NSBezierPath(rect: NSRect(x: 0, y: 0, width: 1024, height: 1024))
@@ -30,7 +32,7 @@ for (size, scale) in sizes {
     cup.line(to: NSPoint(x: 652, y: 384)); cup.curve(to: NSPoint(x: 310, y: 384), controlPoint1: NSPoint(x: 635, y: 270), controlPoint2: NSPoint(x: 322, y: 270)); cup.close(); cup.fill()
     NSColor(white: 0.98, alpha: 0.9).setStroke()
     let saucer = NSBezierPath(); saucer.move(to: NSPoint(x: 248, y: 278)); saucer.line(to: NSPoint(x: 712, y: 278)); saucer.lineWidth = 30; saucer.lineCapStyle = .round; saucer.stroke()
-    moonColor.withAlphaComponent(0.85).setStroke()
+    steamColor.setStroke()
     for x in [390.0, 510.0] {
         let steam = NSBezierPath(); steam.move(to: NSPoint(x: x, y: 644))
         steam.curve(to: NSPoint(x: x + 12, y: 797), controlPoint1: NSPoint(x: x + 70, y: 700), controlPoint2: NSPoint(x: x - 50, y: 735))
