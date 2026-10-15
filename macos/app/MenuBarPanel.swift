@@ -20,12 +20,12 @@ struct MenuBarPanel: View {
         }
         .frame(width: 320)
         .background(AwakeStyle.page)
-        .tint(AwakeStyle.ink)
+        .tint(AwakeStyle.orange)
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
-            StatusHero(model: model, compact: true).awakeCard(padding: 14, radius: 14)
+            StatusHero(model: model, compact: true).awakeHero(padding: 14, radius: 14)
             VStack(alignment: .leading, spacing: 7) {
                 if let period = model.periodText {
                     InfoRow(icon: "clock", title: model.unlimitedSession ? "开始于" : "时段", value: period)

@@ -35,12 +35,13 @@ struct ControlPanel: View {
                 PillPicker(options: [(PanelTab.control, PanelTab.control.rawValue), (PanelTab.settings, PanelTab.settings.rawValue)],
                            selection: $router.tab, compact: true)
             }
-            .padding(.horizontal, 22).padding(.top, 16).padding(.bottom, 16)
+            .padding(.horizontal, 22).padding(.top, 16).padding(.bottom, 6)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if router.tab == .settings { SettingsView(model: model) } else { controls }
                 }
-                .padding(.horizontal, 22).padding(.bottom, 20)
+                // Top inset leaves room for the status card's shadow inside the scroll clip.
+                .padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 20)
                 .background(HeightReporter { ControlWindow.shared.fit(content: $0) })
             }
             .scrollIndicators(.hidden)
@@ -53,7 +54,7 @@ struct ControlPanel: View {
         }
         .frame(width: 460).frame(minHeight: 300, idealHeight: 760, maxHeight: .infinity)
         .background(AwakeStyle.page)
-        .tint(AwakeStyle.ink)
+        .tint(AwakeStyle.orange)
     }
 
     private var controls: some View {
@@ -64,7 +65,7 @@ struct ControlPanel: View {
                 ConditionChips(model: model)
                 if !model.hasSession, let last = model.lastSession { LastSessionView(result: last, now: model.now) }
             }
-            .awakeCard(padding: 14, radius: 16)
+            .awakeHero(padding: 14, radius: 16)
 
             if model.hasSession {
                 SessionSummary(model: model)
@@ -188,9 +189,9 @@ struct SceneCard: View {
                 Spacer(minLength: 0)
             }
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-            .background(AwakeStyle.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(selected ? AwakeStyle.selectedCard : AwakeStyle.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(selected ? AwakeStyle.ink.opacity(0.85) : AwakeStyle.hairline, lineWidth: selected ? 1 : 0.5))
+                .stroke(selected ? AwakeStyle.ink.opacity(0.6) : AwakeStyle.hairline, lineWidth: selected ? 1 : 0.5))
             .shadow(color: .black.opacity(selected ? 0.07 : 0.03), radius: selected ? 5 : 3, y: selected ? 2 : 1)
             .contentShape(RoundedRectangle(cornerRadius: 12))
         }
@@ -200,7 +201,7 @@ struct SceneCard: View {
     }
 }
 
-/// Power, network and thermal at a glance; orange only for unknown values or a broken rule.
+/// Power, network and thermal at a glance inside the status card; warning color only for unknown values or a broken rule.
 struct ConditionChips: View {
     @ObservedObject var model: AppModel
     var body: some View {
@@ -221,9 +222,9 @@ struct ConditionChip: View {
     var warning = false
     var body: some View {
         Label(value, systemImage: icon).font(.system(size: 11, weight: .medium)).lineLimit(1)
-            .foregroundStyle(warning ? Color.orange : Color.secondary)
+            .foregroundStyle(warning ? AwakeStyle.warning : Color.secondary)
             .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(warning ? Color.orange.opacity(0.12) : AwakeStyle.well, in: Capsule())
+            .background(warning ? AwakeStyle.orange.opacity(0.14) : AwakeStyle.chip, in: Capsule())
     }
 }
 

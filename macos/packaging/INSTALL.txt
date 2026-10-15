@@ -1,4 +1,4 @@
-KeepMyMacAwake 0.4.0 体验版
+KeepMyMacAwake 0.5.0 体验版
 macOS 14 或更新版本 · Apple Silicon / Intel 通用包
 
 安装

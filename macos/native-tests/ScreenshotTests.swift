@@ -41,6 +41,11 @@ final class ScreenshotTests: XCTestCase {
         PanelRouter.shared.tab = .settings
         try render(ControlPanel(model: model).frame(height: 760), "settings-light", output)
         PanelRouter.shared.tab = .control
+        // Lid scene without a connected helper: the warning state of the status card.
+        model.chooseScene("有网时")
+        for appearance in ["light", "dark"] {
+            try render(ControlPanel(model: model).frame(height: 760), "control-blocked-\(appearance)", output, dark: appearance == "dark")
+        }
 
         // Start an ordinary session, then show it as the night scene without creating real dimming overlays.
         model.chooseScene("日常"); model.durationMinutes = 480
@@ -74,8 +79,21 @@ final class ScreenshotTests: XCTestCase {
         window.contentView = host
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
-        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        appearance?.performAsCurrentDrawingAppearance { host.cacheDisplay(in: host.bounds, to: rep) }
+        // cacheDisplay draws SwiftUI shadows on the wrong side, so render the layer tree instead. It comes out
+        // upside down, and shadow offsets ignore the CTM, so flip the finished bitmap rather than the context.
+        let layer = try XCTUnwrap(host.layer)
+        let width = Int(size.width * 2), height = Int(size.height * 2)
+        func bitmap() throws -> CGContext {
+            try XCTUnwrap(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpace(name: CGColorSpace.displayP3)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        }
+        let upsideDown = try bitmap()
+        upsideDown.scaleBy(x: 2, y: 2)
+        appearance?.performAsCurrentDrawingAppearance { layer.render(in: upsideDown) }
+        let upright = try bitmap()
+        upright.translateBy(x: 0, y: CGFloat(height)); upright.scaleBy(x: 1, y: -1)
+        upright.draw(try XCTUnwrap(upsideDown.makeImage()), in: CGRect(x: 0, y: 0, width: width, height: height))
+        let rep = NSBitmapImageRep(cgImage: try XCTUnwrap(upright.makeImage()))
         let data = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
         try data.write(to: output.appendingPathComponent("\(name).png"))
         window.orderOut(nil)
