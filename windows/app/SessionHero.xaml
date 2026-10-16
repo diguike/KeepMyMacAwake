@@ -1,0 +1,65 @@
+<UserControl x:Class="Awake.App.SessionHero" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:Awake.App">
+  <Border Background="{DynamicResource HeroBrush}" BorderBrush="{DynamicResource HeroLineBrush}" BorderThickness="0.75" CornerRadius="16" Padding="16">
+    <StackPanel>
+      <DockPanel Margin="0,0,0,10">
+        <TextBlock DockPanel.Dock="Right" Text="{Binding EndText}" Foreground="{DynamicResource MutedBrush}" FontSize="12" />
+        <StackPanel Orientation="Horizontal">
+          <Ellipse Width="6" Height="6" Margin="0,0,6,0">
+            <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding IsBlocked}" Value="True"><Setter Property="Fill" Value="{DynamicResource WarningBrush}" /></DataTrigger>
+                <DataTrigger Binding="{Binding NeedsRecovery}" Value="True"><Setter Property="Fill" Value="{DynamicResource DangerBrush}" /></DataTrigger>
+              </Style.Triggers>
+            </Style></Ellipse.Style>
+          </Ellipse>
+          <TextBlock Text="{Binding PhaseText}" Foreground="{DynamicResource MutedBrush}" FontSize="12" AutomationProperties.LiveSetting="Polite" />
+        </StackPanel>
+      </DockPanel>
+      <Grid>
+        <ItemsControl ItemsSource="{Binding NumberParts}" Visibility="{Binding HasHeadlineNumbers, Converter={StaticResource BoolVisibility}}"
+                      AutomationProperties.Name="{Binding RemainingText}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate><DataTemplate>
+            <StackPanel Orientation="Horizontal" Margin="0,0,8,0">
+              <TextBlock Text="{Binding Value}" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="{DynamicResource HeroNumberSize}" FontWeight="Light" Foreground="{DynamicResource HeroInkBrush}" />
+              <TextBlock Text="{Binding Unit}" FontSize="13" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Bottom" Margin="4,0,0,9" />
+            </StackPanel>
+          </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding HeadlineText}">
+          <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="FontSize" Value="32" /><Setter Property="FontWeight" Value="Light" /><Setter Property="Foreground" Value="{DynamicResource HeroInkBrush}" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding HasHeadlineNumbers}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+              <DataTrigger Binding="{Binding IsBlocked}" Value="True"><Setter Property="FontSize" Value="20" /><Setter Property="FontWeight" Value="Medium" /><Setter Property="Foreground" Value="{DynamicResource WarningBrush}" /></DataTrigger>
+              <DataTrigger Binding="{Binding NeedsRecovery}" Value="True"><Setter Property="FontSize" Value="20" /><Setter Property="FontWeight" Value="Medium" /><Setter Property="Foreground" Value="{DynamicResource DangerBrush}" /></DataTrigger>
+            </Style.Triggers>
+          </Style></TextBlock.Style>
+        </TextBlock>
+      </Grid>
+      <local:TickMeter Height="16" Progress="{Binding Progress}" Foreground="{DynamicResource AccentBrush}" StartBrush="{DynamicResource AmberBrush}"
+                       TrackBrush="{DynamicResource MeterTrackBrush}" Margin="0,10,0,0" Visibility="{Binding IsFiniteActive, Converter={StaticResource BoolVisibility}}" />
+      <TextBlock Text="{Binding HeroHint}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0"
+                 ToolTip="当前没有开启合盖，合盖后会正常睡眠" />
+      <Separator Margin="0,12" />
+      <WrapPanel>
+        <Border>
+          <Border.Style><Style TargetType="Border" BasedOn="{StaticResource Chip}"><Style.Triggers><DataTrigger Binding="{Binding PowerWarning}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" /><Setter Property="BorderThickness" Value="1" /></DataTrigger></Style.Triggers></Style></Border.Style>
+          <TextBlock Text="{Binding PowerText}" FontSize="11" Foreground="{DynamicResource MutedBrush}" />
+        </Border>
+        <Border Style="{StaticResource Chip}" ToolTip="只检测系统是否有可用网络，不保证互联网或任务服务可达">
+          <TextBlock Text="{Binding NetworkText}" FontSize="11">
+            <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}"><Setter Property="Foreground" Value="{DynamicResource MutedBrush}" /><Style.Triggers><DataTrigger Binding="{Binding NetworkWarning}" Value="True"><Setter Property="Foreground" Value="{DynamicResource WarningBrush}" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+          </TextBlock>
+        </Border>
+        <Border Style="{StaticResource Chip}" ToolTip="Windows 预览没有可靠的散热监测来源，应用散热保护不可用">
+          <TextBlock Text="散热未知" FontSize="11" Foreground="{DynamicResource WarningBrush}" />
+        </Border>
+      </WrapPanel>
+      <TextBlock Text="{Binding LastResultSummary}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,10,0,0"
+                 Visibility="{Binding ShowLastResult, Converter={StaticResource BoolVisibility}}" ToolTip="{Binding LastResultText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+    </StackPanel>
+  </Border>
+</UserControl>

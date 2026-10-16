@@ -14,9 +14,10 @@ internal static class Program
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("WPF integration checks require Windows");
         var application = new global::Awake.App.App();
         application.InitializeComponent();
+        AppTheme.Apply(application.Resources, false, false);
         var tests = new (string Name, Action Run)[]
         {
-            ("first authorization updates command availability", FirstAuthorization),
+            ("first launch starts directly without a welcome gate", FirstLaunch),
             ("network scene preserves its unsupported policy", NetworkScene),
             ("24-hour countdown retains total hours and expires", TwentyFourHours),
             ("new unsupported start does not reuse expiry reason", NewUnsupportedStart),
@@ -29,7 +30,10 @@ internal static class Program
             ("completed result persists without replaying notification or session", PersistedResult),
             ("notifications are opt in and first-close hint persists", NotificationAndTrayHint),
             ("installer waits for exit and refuses an unconfirmed shutdown", InstallerHandoff),
-            ("MainWindow XAML loads with real resources and bindings", WindowLoads)
+            ("MainWindow XAML loads with real resources and bindings", WindowLoads),
+            ("status numbers, unlimited elapsed time and session summary stay in sync", SessionPresentation),
+            ("unknown telemetry stays visible and does not invent readiness", UnknownTelemetry),
+            ("tray panel shares session commands without showing on construction", TrayPanelLoads)
         };
         string? reportDirectory = args.Length == 2 && args[0] == "--report-dir" ? args[1] : null;
         if (args.Length != 0 && reportDirectory is null) throw new ArgumentException("Usage: Awake.App.Tests [--report-dir PATH]");
@@ -77,7 +81,7 @@ internal static class Program
             Check(Model.IsActive && Power.Active, "ordinary preview did not acquire injected backend");
             Seconds = 60; Model.RefreshMonitor();
             Check(!Model.IsActive && !Power.Active, "expiry did not release backend");
-            Check(Model.Message.Contains("设定时间已到", StringComparison.Ordinal), Model.Message);
+            Check(Model.Message.Length == 0 && Model.LastResultText.Contains("时间到", StringComparison.Ordinal), Model.LastResultText);
         }
         public void Dispose()
         {
@@ -89,15 +93,14 @@ internal static class Program
     private static void Check(bool condition, string detail)
     { if (!condition) throw new InvalidOperationException(detail); }
 
-    private static void FirstAuthorization()
+    private static void FirstLaunch()
     {
-        using var f = new Fixture(false); int changes = 0;
-        f.Model.ToggleCommand.CanExecuteChanged += (_, _) => changes++;
-        Check(!f.Model.ToggleCommand.CanExecute(null), "start enabled before welcome acceptance");
-        f.Model.OnboardCommand.Execute(null);
-        Check(f.Model.HasOnboarded && !f.Model.ShowWelcome && f.Model.ToggleCommand.CanExecute(null), "welcome acceptance did not enable start");
-        Check(changes > 0, "command binding was not notified");
-        Check(!f.Model.IsActive, "welcome acceptance started a session");
+        using var f = new Fixture(false);
+        Check(f.Model.ToggleCommand.CanExecute(null) && f.Model.ShowConfiguration, "first launch cannot use controls directly");
+        Check(!f.Model.IsActive && f.Model.Message.Length == 0, "first launch has a session or redundant message");
+        f.Model.ToggleCommand.Execute(null);
+        Check(f.Model.IsActive && f.Model.HasOnboarded, "first explicit start did not persist first-use state");
+        Check(f.Store.Load().HasOnboarded, "first-use state not saved");
     }
     private static void NetworkScene()
     {
@@ -125,7 +128,7 @@ internal static class Program
     {
         using var f = new Fixture(); f.ExpireOneMinute(); f.Model.LidCommand.Execute(null); f.Model.ToggleCommand.Execute(null);
         Check(!f.Model.IsActive && f.Model.Message.Contains("合盖", StringComparison.Ordinal), f.Model.Message);
-        Check(!f.Model.Message.Contains("设定时间已到", StringComparison.Ordinal), "old expiry replaced unsupported error");
+        Check(!f.Model.Message.Contains("时间到", StringComparison.Ordinal), "old expiry replaced unsupported error");
     }
     private static void InvalidCustomAfterExpiry()
     {
@@ -160,17 +163,17 @@ internal static class Program
     private static void CustomizedScene()
     {
         using var f = new Fixture(); f.Model.DailyCommand.Execute(null); f.Model.DurationMinutes = 120;
-        Check(f.Model.SceneStatusText.Contains("自定义", StringComparison.Ordinal), f.Model.SceneStatusText);
+        Check(f.Model.SceneStatusText.Contains("已调整", StringComparison.Ordinal), f.Model.SceneStatusText);
     }
     private static void LastResultSurvivesSceneChange()
     {
         using var f = new Fixture(); f.Model.DurationMinutes = 1; f.Model.ToggleCommand.Execute(null);
-        Check(f.Model.EndText.StartsWith("预计", StringComparison.Ordinal) && !f.Model.ShowLastResult, f.Model.EndText);
+        Check(f.Model.EndText.EndsWith("结束", StringComparison.Ordinal) && !f.Model.ShowLastResult, f.Model.EndText);
         f.Seconds = 60; f.Model.RefreshMonitor();
         f.Model.NightCommand.Execute(null);
         Check(f.Model.IsNightScene && !f.Model.IsDailyScene, "scene selection flags did not follow the chosen scene");
         Check(f.Model.ShowLastResult && f.Model.EndText.Length == 0, "last result hidden or stale end time shown after expiry");
-        Check(f.Model.LastResultText.Contains("运行 1 分钟", StringComparison.Ordinal) && f.Model.LastResultText.Contains("设定时间已到", StringComparison.Ordinal), f.Model.LastResultText);
+        Check(f.Model.LastResultText.Contains("运行 1 分钟", StringComparison.Ordinal) && f.Model.LastResultText.Contains("时间到", StringComparison.Ordinal), f.Model.LastResultText);
     }
     private static void WindowLoads()
     {
@@ -179,6 +182,38 @@ internal static class Program
         Check(window.Content is not null, "XAML content was not loaded");
         Check(!window.IsVisible, "construction unexpectedly showed window");
         // Application.Shutdown closes it after all checks; no UI interaction claimed.
+    }
+    private static void SessionPresentation()
+    {
+        using var f = new Fixture();
+        Check(f.Model.NumberParts.SequenceEqual([new SessionText.NumberPart("1", "小时")]), "planned duration not shown");
+        f.Model.ToggleCommand.Execute(null); f.Seconds = 600; f.Model.RefreshMonitor();
+        Check(f.Model.IsActive && !f.Model.ShowConfiguration && f.Model.IsFiniteActive, "active controls were not replaced");
+        Check(f.Model.NumberParts.SequenceEqual([new SessionText.NumberPart("50", "分"), new("0", "秒")]), "remaining numbers wrong");
+        Check(f.Model.Message.Length == 0 && f.Model.HeroHint.Contains("请勿合盖", StringComparison.Ordinal), "active state lost its boundary or repeats success message");
+        f.Model.ExtendCommand.Execute(null);
+        Check(f.Model.NumberParts[0].Value == "1" && f.Model.Message.Length == 0, "extension did not refresh numbers");
+        f.Model.TryStop(); f.Model.DurationMinutes = -1; f.Model.ToggleCommand.Execute(null);
+        f.Seconds += 65; f.Model.RefreshMonitor();
+        Check(!f.Model.IsFiniteActive && f.Model.PhaseText == "已运行" && f.Model.NumberParts.SequenceEqual([new SessionText.NumberPart("1", "分"), new("5", "秒")]), "unlimited session lost elapsed time");
+    }
+    private static void UnknownTelemetry()
+    {
+        using var f = new Fixture(); f.Sample = new(null, null, null, ThermalLevel.Unknown); f.Model.RefreshMonitor();
+        Check(f.Model.IsBlocked && f.Model.HeadlineText == "电源状态未知" && f.Model.PowerWarning && f.Model.NetworkText == "网络未知", "unknown telemetry shown as ready");
+        f.Model.ToggleCommand.Execute(null);
+        Check(!f.Model.IsActive && f.Power.Starts == 0 && f.Model.HasMessage, "unknown telemetry acquired backend");
+    }
+    private static void TrayPanelLoads()
+    {
+        using var f = new Fixture();
+        var panel = new TrayPanel(f.Model, _ => { }, () => { });
+        Check(ReferenceEquals(panel.DataContext, f.Model) && panel.Content is not null && !panel.IsVisible, "tray panel lost model or appeared unexpectedly");
+        f.Model.ToggleCommand.Execute(null);
+        Check(f.Model.IsActive, "shared tray command could not start");
+        f.Model.TryStop();
+        Check(!f.Model.IsActive && !f.Power.Active, "shared tray command did not release");
+        panel.Close();
     }
     private static void PersistedResult()
     {

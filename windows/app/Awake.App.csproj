@@ -9,10 +9,12 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>KeepMyMacAwake.Windows</AssemblyName>
     <RootNamespace>Awake.App</RootNamespace>
-    <Version>0.3.2</Version>
+    <Version>0.5.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets/app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="assets/app.ico" />
     <ProjectReference Include="../core/Awake.Core.csproj" />
     <ProjectReference Include="../platform/Awake.Platform.csproj" />
   </ItemGroup>

@@ -50,7 +50,7 @@ public partial class App : Application
             model = new MainViewModel();
             var window = new MainWindow(model);
             MainWindow = window;
-            tray = new TrayController(model, () => window.Reveal(), RequestExit);
+            tray = new TrayController(model, window.RevealPage, RequestExit);
             updateRequest = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\KeepMyMacAwake.Windows.Update." + user);
             updateWait = ThreadPool.RegisterWaitForSingleObject(updateRequest,
                 (_, _) => Dispatcher.BeginInvoke(RequestExit), null, Timeout.Infinite, false);
