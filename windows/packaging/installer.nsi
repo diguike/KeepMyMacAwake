@@ -24,10 +24,12 @@ OutFile "${OUTPUT}"
 InstallDir "$LOCALAPPDATA\Programs\KeepMyMacAwake"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
+!define MUI_ICON "../app/assets/app.ico"
+!define MUI_UNICON "../app/assets/app.ico"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TEXT "让已经启动的长任务继续运行。\r\n\r\n此开发预览仅支持接电、开盖，未开放合盖或电池保活，没有应用热保护。\r\n\r\n只为当前用户安装，无需管理员权限；不安装系统服务，不修改合盖设置。"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\KeepMyMacAwake.Windows.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "打开 KeepMyMacAwake（保持待机）"
+!define MUI_FINISHPAGE_RUN_TEXT "打开 KeepMyMacAwake"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "../../LICENSE"
 !insertmacro MUI_PAGE_INSTFILES
@@ -83,6 +85,7 @@ Section "安装"
   WriteRegStr HKCU "Software\KeepMyMacAwake.Windows" "Runtime" "${RUNTIME}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepMyMacAwake.Windows" "DisplayName" "KeepMyMacAwake · Windows 开发预览"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepMyMacAwake.Windows" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepMyMacAwake.Windows" "DisplayIcon" '$\"$INSTDIR\KeepMyMacAwake.Windows.exe$\"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepMyMacAwake.Windows" "UninstallString" '$\"$INSTDIR\uninstall.exe$\"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepMyMacAwake.Windows" "InstallLocation" "$INSTDIR"
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeepMyMacAwake.Windows" "NoModify" 1

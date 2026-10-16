@@ -4,7 +4,7 @@
     <Grid>
       <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding NeedsRecovery}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Grid.Style>
       <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-      <Button Command="{Binding ToggleCommand}" Content="{Binding ActionText}" ToolTip="Ctrl+Enter" AutomationProperties.Name="开始或停止保持唤醒">
+      <Button Command="{Binding ToggleCommand}" Content="{Binding ActionText}" ToolTip="Ctrl+Enter" AutomationProperties.Name="{Binding ActionText}">
         <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}"><Style.Triggers>
           <DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Background" Value="{DynamicResource WellBrush}" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" /></DataTrigger>
         </Style.Triggers></Style></Button.Style>

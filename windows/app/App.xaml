@@ -90,7 +90,9 @@
               <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" />
             </ControlTemplate></ToggleButton.Template>
           </ToggleButton>
-          <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" Margin="9,4,26,4" VerticalAlignment="Center" />
+          <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                            ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                            Margin="9,4,26,4" VerticalAlignment="Center" />
           <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,9,0" IsHitTestVisible="False" />
           <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False">
             <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="7" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Padding="4">
@@ -142,7 +144,7 @@
         <Border x:Name="SceneSurface" Background="{DynamicResource CardBrush}" CornerRadius="12" Padding="10" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0.5">
           <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition /></Grid.ColumnDefinitions>
             <Border x:Name="Tile" Width="28" Height="28" CornerRadius="7" Background="{DynamicResource WellBrush}" VerticalAlignment="Center">
-              <TextBlock x:Name="Glyph" Text="&#xE8F1;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" />
+              <Viewbox Margin="6"><Path x:Name="Glyph" Width="24" Height="24" Stretch="Uniform" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 3,9 L 17,9 L 17,16 Q 17,21 10,21 Q 3,21 3,16 Z M 17,10 Q 26,9 23,15 Q 21,18 17,17 M 1,23 L 21,23 M 7,6 Q 4,3 7,0 M 13,6 Q 10,3 13,0" /></Viewbox>
             </Border>
             <StackPanel Grid.Column="1" Margin="10,0,0,0">
               <ContentPresenter TextElement.FontWeight="SemiBold" /><TextBlock x:Name="Tagline" Text="1 小时" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
@@ -150,26 +152,26 @@
           </Grid>
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="Content" Value="夜间"><Setter TargetName="Glyph" Property="Text" Value="&#xE708;" /><Setter TargetName="Tagline" Property="Text" Value="8 小时 · 屏幕调暗" /></Trigger>
-          <Trigger Property="Content" Value="接电合盖"><Setter TargetName="Glyph" Property="Text" Value="&#xE945;" /><Setter TargetName="Tagline" Property="Text" Value="不限时" /></Trigger>
-          <Trigger Property="Content" Value="外出合盖"><Setter TargetName="Glyph" Property="Text" Value="&#xE7F8;" /><Setter TargetName="Tagline" Property="Text" Value="2 小时 · 断网即停" /></Trigger>
-          <Trigger Property="Tag" Value="True">
+          <Trigger Property="Content" Value="夜间"><Setter TargetName="Glyph" Property="Data" Value="M 19,17 A 10,10 0 1 1 7,3 A 9,9 0 0 0 19,17 Z" /><Setter TargetName="Tagline" Property="Text" Value="8 小时 · 屏幕调暗" /></Trigger>
+          <Trigger Property="Content" Value="接电合盖"><Setter TargetName="Glyph" Property="Data" Value="M 8,2 L 8,8 M 16,2 L 16,8 M 5,8 L 19,8 L 19,12 Q 19,18 12,18 Q 5,18 5,12 Z M 12,18 L 12,24" /><Setter TargetName="Tagline" Property="Text" Value="不限时" /></Trigger>
+          <Trigger Property="Content" Value="外出合盖"><Setter TargetName="Glyph" Property="Data" Value="M 4,3 L 20,3 L 20,17 L 4,17 Z M 4,17 L 1,21 L 23,21 L 20,17 M 10,19 L 14,19" /><Setter TargetName="Tagline" Property="Text" Value="2 小时 · 断网即停" /></Trigger>
+          <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
             <Setter TargetName="SceneSurface" Property="Background" Value="{DynamicResource AccentSoftBrush}" /><Setter TargetName="SceneSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter TargetName="SceneSurface" Property="BorderThickness" Value="1" />
-            <Setter TargetName="Tile" Property="Background" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
-          </Trigger>
+            <Setter TargetName="Tile" Property="Background" Value="{DynamicResource AccentBrush}" /><Setter TargetName="Glyph" Property="Stroke" Value="{DynamicResource AccentTextBrush}" />
+          </DataTrigger>
           <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="SceneSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter TargetName="SceneSurface" Property="Opacity" Value="0.5" /></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
-      <Style.Triggers><Trigger Property="Tag" Value="True"><Setter Property="AutomationProperties.ItemStatus" Value="已选择" /></Trigger></Style.Triggers>
+      <Style.Triggers><DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True"><Setter Property="AutomationProperties.ItemStatus" Value="已选择" /></DataTrigger></Style.Triggers>
     </Style>
     <Style x:Key="ScenePill" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="Padding" Value="8,6" /><Setter Property="FontSize" Value="11" />
       <Setter Property="AutomationProperties.ItemStatus" Value="未选择" />
-      <Style.Triggers><Trigger Property="Tag" Value="True">
+      <Style.Triggers><DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" /><Setter Property="BorderThickness" Value="1.5" /><Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" /><Setter Property="AutomationProperties.ItemStatus" Value="已选择" />
-      </Trigger></Style.Triggers>
+      </DataTrigger></Style.Triggers>
     </Style>
   </Application.Resources>
 </Application>

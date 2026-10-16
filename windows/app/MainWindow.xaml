@@ -9,11 +9,11 @@
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
         <Border x:Name="TabSurface" Padding="{TemplateBinding Padding}" CornerRadius="14" Background="Transparent" BorderBrush="Transparent" BorderThickness="0.5">
-          <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+          <ContentPresenter x:Name="TabHeader" ContentSource="Header" RecognizesAccessKey="True" TextElement.FontWeight="Normal" />
         </Border>
         <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True">
           <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource RaisedBrush}" /><Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource LineBrush}" />
-          <Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="FontWeight" Value="SemiBold" />
+          <Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter TargetName="TabHeader" Property="TextElement.FontWeight" Value="SemiBold" />
         </Trigger></ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>

@@ -56,7 +56,7 @@ public partial class App : Application
                 (_, _) => Dispatcher.BeginInvoke(RequestExit), null, Timeout.Infinite, false);
             activationWait = ThreadPool.RegisterWaitForSingleObject(activation,
                 (_, _) => Dispatcher.BeginInvoke(() => window.Reveal()), null, Timeout.Infinite, false);
-            if (!e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase) || !model.HasOnboarded) window.Show();
+            if (!e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase)) window.Show();
         }
         catch (Exception error)
         {

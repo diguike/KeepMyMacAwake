@@ -119,12 +119,21 @@ internal static class UiReport
                     };
                     TextElement.SetFontFamily(canvas, window.FontFamily);
                     TextElement.SetFontSize(canvas, window.FontSize);
-                    canvas.Measure(new Size(canvas.Width, double.PositiveInfinity));
+                    // Data binding can change visibility after the first measure. Keep height auto
+                    // until those changes settle, rather than freezing the initial all-visible size.
+                    for (int pass = 0; pass < 3; pass++)
+                    {
+                        canvas.Measure(new Size(canvas.Width, double.PositiveInfinity));
+                        canvas.Arrange(new Rect(0, 0, canvas.Width, canvas.DesiredSize.Height));
+                        canvas.UpdateLayout();
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    }
                     canvas.Height = Math.Max(window.MinHeight, canvas.DesiredSize.Height);
                     canvas.Measure(new Size(canvas.Width, canvas.Height));
                     canvas.Arrange(new Rect(0, 0, canvas.Width, canvas.Height));
                     canvas.UpdateLayout();
                     Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    if (ContainsDebugText(canvas)) throw new InvalidDataException("A choice was rendered as an object instead of its display label");
                     int width = (int)Math.Round(canvas.Width * scale / 100);
                     int height = (int)Math.Round(canvas.Height * scale / 100);
                     var bitmap = new RenderTargetBitmap(width, height, 96 * scale / 100.0, 96 * scale / 100.0, PixelFormats.Pbgra32);
@@ -180,6 +189,13 @@ internal static class UiReport
         if (failures.Count != 0) throw new InvalidOperationException("WPF preview rendering or binding failed; inspect report.json");
     }
     private static string Encode(string value) => WebUtility.HtmlEncode(value);
+    private static bool ContainsDebugText(DependencyObject root)
+    {
+        if (root is TextBlock text && text.Text.StartsWith("Choice {", StringComparison.Ordinal)) return true;
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            if (ContainsDebugText(VisualTreeHelper.GetChild(root, index))) return true;
+        return false;
+    }
     private static TabControl FindTabs(DependencyObject root)
     {
         if (root is TabControl tabs) return tabs;

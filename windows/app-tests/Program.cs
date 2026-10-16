@@ -181,7 +181,22 @@ internal static class Program
         Check(ReferenceEquals(window.DataContext, f.Model), "XAML window lost view model");
         Check(window.Content is not null, "XAML content was not loaded");
         Check(!window.IsVisible, "construction unexpectedly showed window");
+        var content = (System.Windows.FrameworkElement)window.Content!;
+        content.Measure(new System.Windows.Size(480, 1000));
+        content.Arrange(new System.Windows.Rect(0, 0, 480, content.DesiredSize.Height));
+        content.UpdateLayout();
+        var daily = FindButton(window, "日常") ?? throw new InvalidOperationException("daily scene missing");
+        Check(System.Windows.Automation.AutomationProperties.GetItemStatus(daily) == "已选择", "scene selection lost its accessible state");
+        var tile = daily.Template.FindName("Tile", daily) as System.Windows.Controls.Border;
+        Check(tile?.Background == System.Windows.Application.Current.Resources["AccentBrush"], "scene selection lost its orange icon tile");
         // Application.Shutdown closes it after all checks; no UI interaction claimed.
+    }
+    private static System.Windows.Controls.Button? FindButton(System.Windows.DependencyObject root, string title)
+    {
+        if (root is System.Windows.Controls.Button button && Equals(button.Content, title)) return button;
+        foreach (object child in System.Windows.LogicalTreeHelper.GetChildren(root))
+            if (child is System.Windows.DependencyObject node && FindButton(node, title) is { } found) return found;
+        return null;
     }
     private static void SessionPresentation()
     {
