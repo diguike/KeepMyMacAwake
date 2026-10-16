@@ -6,12 +6,28 @@ public static class SessionText
 {
     public static string SceneName(Scene scene) => scene switch { Scene.Night => "夜间", Scene.PluggedLid => "接电合盖", Scene.Network => "外出合盖", _ => "日常" };
     public static string Clock(DateTime local) => local.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
-    /// "预计 07:30 结束", or "预计明天 07:30 结束" when the deadline crosses midnight.
+    /// Same large-number layout as Mac: hours/minutes, then minutes/seconds in the last hour.
+    public sealed record NumberPart(string Value, string Unit);
+    public static IReadOnlyList<NumberPart> Parts(double seconds, bool showSeconds = true)
+    {
+        long total = (long)Math.Ceiling(Math.Max(0, seconds));
+        long hours = total / 3600, minutes = total / 60 % 60, rest = total % 60;
+        if (hours > 0)
+            return !showSeconds && minutes == 0 ? [new($"{hours}", "小时")] : [new($"{hours}", "小时"), new($"{minutes}", "分")];
+        return showSeconds ? [new($"{minutes}", "分"), new($"{rest}", "秒")] : [new($"{Math.Max(1, minutes)}", "分钟")];
+    }
+    public static string EndedAt(DateTime endLocal, DateTime nowLocal) =>
+        (nowLocal.Date - endLocal.Date).Days switch
+        {
+            0 => Clock(endLocal), 1 => "昨天 " + Clock(endLocal),
+            _ => endLocal.ToString("M/d ", System.Globalization.CultureInfo.InvariantCulture) + Clock(endLocal)
+        };
+    /// "07:30 结束", or "明天 07:30 结束" when the deadline crosses midnight.
     public static string EndTime(DateTime endLocal, DateTime nowLocal)
     {
         int days = (endLocal.Date - nowLocal.Date).Days;
-        string day = days == 0 ? " " : days == 1 ? "明天 " : $" {days} 天后 ";
-        return "预计" + day + Clock(endLocal) + " 结束";
+        string day = days <= 0 ? "" : days == 1 ? "明天 " : $"{days} 天后 ";
+        return day + Clock(endLocal) + " 结束";
     }
     public static string Duration(double seconds)
     {

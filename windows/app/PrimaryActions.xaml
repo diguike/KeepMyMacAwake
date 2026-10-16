@@ -1,0 +1,20 @@
+<UserControl x:Class="Awake.App.PrimaryActions" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel>
+    <Grid>
+      <Grid.Style><Style TargetType="Grid"><Style.Triggers><DataTrigger Binding="{Binding NeedsRecovery}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+      <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Button Command="{Binding ToggleCommand}" Content="{Binding ActionText}" ToolTip="Ctrl+Enter" AutomationProperties.Name="{Binding ActionText}">
+        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}"><Style.Triggers>
+          <DataTrigger Binding="{Binding IsActive}" Value="True"><Setter Property="Background" Value="{DynamicResource WellBrush}" /><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" /></DataTrigger>
+        </Style.Triggers></Style></Button.Style>
+      </Button>
+      <Button Grid.Column="1" Content="+15 分钟" Command="{Binding ExtendCommand}" Margin="8,0,0,0" MinHeight="38" ToolTip="延长 15 分钟"
+              Visibility="{Binding IsFiniteActive, Converter={StaticResource BoolVisibility}}" />
+    </Grid>
+    <Button Content="恢复睡眠设置" Command="{Binding RecoverCommand}" Style="{StaticResource PrimaryButton}"
+            Visibility="{Binding NeedsRecovery, Converter={StaticResource BoolVisibility}}" />
+    <TextBlock Text="{Binding Message}" Foreground="{DynamicResource WarningBrush}" FontSize="11" Margin="0,8,0,0"
+               Visibility="{Binding HasMessage, Converter={StaticResource BoolVisibility}}" AutomationProperties.LiveSetting="Polite" />
+  </StackPanel>
+</UserControl>

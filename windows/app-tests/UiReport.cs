@@ -24,12 +24,14 @@ internal static class UiReport
     private sealed class Backend : IPowerBackend
     {
         public void Start(bool keepDisplay) { }
-        public void Stop() { }
+        internal bool FailStop;
+        public void Stop() { if (FailStop) throw new InvalidOperationException("模拟释放失败"); }
     }
     private sealed class Fixture : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "keepmymacawake-ui-" + Guid.NewGuid().ToString("N"));
         private double seconds;
+        private readonly Backend backend = new();
         internal MainViewModel Model { get; }
         internal Fixture(string state)
         {
@@ -37,22 +39,29 @@ internal static class UiReport
             store.Save(new Preferences(), state != "welcome");
             var local = new DateTime(2026, 10, 14, 23, 30, 0, DateTimeKind.Unspecified);
             var epoch = new DateTimeOffset(local, TimeZoneInfo.Local.GetUtcOffset(local));
-            Model = new MainViewModel(new Backend(), () => new PowerSample(true, 95, true, ThermalLevel.Unknown),
+            Model = new MainViewModel(backend, () => new PowerSample(state == "telemetry-unknown" ? null : true, 95, state == "telemetry-unknown" ? null : true, ThermalLevel.Unknown),
                 () => new ClockSample(epoch.AddSeconds(seconds), seconds), store, false);
             switch (state)
             {
                 case "night": Model.NightCommand.Execute(null); break;
+                case "tray-active":
                 case "active":
                     Model.ToggleCommand.Execute(null); seconds = 600; Model.RefreshMonitor(); break;
                 case "completed":
                     Model.DurationMinutes = 0; Model.CustomMinutesText = "1";
                     Model.ToggleCommand.Execute(null); seconds = 60; Model.RefreshMonitor(); break;
+                case "active-unlimited":
+                    Model.DurationMinutes = -1; Model.ToggleCommand.Execute(null); seconds = 3905; Model.RefreshMonitor(); break;
+                case "recovery":
+                    Model.ToggleCommand.Execute(null); backend.FailStop = true; Model.TryStop(); break;
+                case "battery-unavailable": Model.RequireAC = false; break;
+                case "tray-blocked":
                 case "lid-unavailable": Model.LidCommand.Execute(null); break;
             }
         }
         public void Dispose()
         {
-            Model.TryStop(); Model.Dispose();
+            backend.FailStop = false; Model.TryStop(); Model.Dispose();
             Directory.Delete(directory, true);
         }
     }
@@ -72,8 +81,10 @@ internal static class UiReport
         var states = new (string Id, string Label)[]
         {
             ("welcome", "首次使用"), ("daily", "日常未开启"), ("night", "夜间配置"),
-            ("active", "运行与预计结束"), ("completed", "上次结果"),
-            ("lid-unavailable", "合盖尚未开放"), ("settings", "设置")
+            ("active", "运行与预计结束"), ("active-unlimited", "不限时已运行"), ("completed", "上次结果"),
+            ("lid-unavailable", "合盖尚未开放"), ("battery-unavailable", "电池尚未开放"),
+            ("telemetry-unknown", "监测未知"), ("recovery", "释放失败待恢复"), ("settings", "设置"),
+            ("tray-idle", "托盘未开启"), ("tray-active", "托盘运行中"), ("tray-blocked", "托盘合盖未开放")
         };
         var themes = new (string Id, string Label, bool Dark, bool Contrast)[]
         {
@@ -96,21 +107,33 @@ internal static class UiReport
                 {
                     AppTheme.Apply(Application.Current.Resources, theme.Dark, theme.Contrast);
                     using var fixture = new Fixture(state.Id);
-                    var window = new MainWindow(fixture.Model);
+                    Window window = state.Id.StartsWith("tray-", StringComparison.Ordinal)
+                        ? new TrayPanel(fixture.Model, _ => { }, () => { }) : new MainWindow(fixture.Model);
                     var content = (FrameworkElement)window.Content;
                     if (state.Id == "settings") FindTabs(content).SelectedIndex = 1;
                     window.Content = null;
                     var canvas = new Border
                     {
-                        Width = window.Width, Height = window.Height,
+                        Width = window.Width, Resources = window.Resources,
                         Background = window.Background, DataContext = fixture.Model, Child = content
                     };
                     TextElement.SetFontFamily(canvas, window.FontFamily);
                     TextElement.SetFontSize(canvas, window.FontSize);
+                    // Data binding can change visibility after the first measure. Keep height auto
+                    // until those changes settle, rather than freezing the initial all-visible size.
+                    for (int pass = 0; pass < 3; pass++)
+                    {
+                        canvas.Measure(new Size(canvas.Width, double.PositiveInfinity));
+                        canvas.Arrange(new Rect(0, 0, canvas.Width, canvas.DesiredSize.Height));
+                        canvas.UpdateLayout();
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    }
+                    canvas.Height = Math.Max(window.MinHeight, canvas.DesiredSize.Height);
                     canvas.Measure(new Size(canvas.Width, canvas.Height));
                     canvas.Arrange(new Rect(0, 0, canvas.Width, canvas.Height));
                     canvas.UpdateLayout();
                     Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                    if (ContainsDebugText(canvas)) throw new InvalidDataException("A choice was rendered as an object instead of its display label");
                     int width = (int)Math.Round(canvas.Width * scale / 100);
                     int height = (int)Math.Round(canvas.Height * scale / 100);
                     var bitmap = new RenderTargetBitmap(width, height, 96 * scale / 100.0, 96 * scale / 100.0, PixelFormats.Pbgra32);
@@ -145,9 +168,9 @@ internal static class UiReport
         var html = new StringBuilder("""
             <!doctype html><html lang="zh-CN"><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1"><title>Windows 界面与测试报告</title>
-            <style>body{font:15px/1.6 system-ui,sans-serif;margin:32px;background:#f7f5f1;color:#292621}main{max-width:1500px;margin:auto}
+            <style>body{font:15px/1.6 system-ui,sans-serif;margin:32px;background:#fffaf4;color:#30261e}main{max-width:1500px;margin:auto}
             .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}figure{margin:0;background:white;padding:12px;border:1px solid #ded8cf;border-radius:8px}
-            img{width:100%;height:auto}figcaption{padding:10px 0}a{color:#965023}.pass{color:#286c3e}.fail{color:#a12424}code{overflow-wrap:anywhere}</style><main>
+            img{width:100%;height:auto}figcaption{padding:10px 0}a{color:#c94a12}.pass{color:#286c3e}.fail{color:#a12424}code{overflow-wrap:anywhere}</style><main>
             <h1>Windows 界面与测试报告</h1>
             <p>真实 WPF 控件的离屏渲染，使用模拟电源和固定会话数据；不含系统标题栏。高对比项预览应用资源，未更改系统高对比设置。</p>
             <p>此报告不验证真实托盘、系统通知、普通用户安装、休眠、拔电或合盖。<a href="report.json">原始报告</a></p>
@@ -166,6 +189,13 @@ internal static class UiReport
         if (failures.Count != 0) throw new InvalidOperationException("WPF preview rendering or binding failed; inspect report.json");
     }
     private static string Encode(string value) => WebUtility.HtmlEncode(value);
+    private static bool ContainsDebugText(DependencyObject root)
+    {
+        if (root is TextBlock text && text.Text.StartsWith("Choice {", StringComparison.Ordinal)) return true;
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            if (ContainsDebugText(VisualTreeHelper.GetChild(root, index))) return true;
+        return false;
+    }
     private static TabControl FindTabs(DependencyObject root)
     {
         if (root is TabControl tabs) return tabs;

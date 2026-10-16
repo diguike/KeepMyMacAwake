@@ -31,23 +31,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool locked;
     private bool loginEnabled;
     private bool disposed;
-    private string message = "未开启";
+    private string message = "";
     private string customMinutesText;
     private string minimumBatteryText;
     private double totalSeconds;
     private DateTimeOffset? startedAt;
     private DateTimeOffset? endsAt;
-    private string? lastResult;
+    private SessionResult? lastResult;
+    private double startedContinuous;
     private string? historyNotice;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<SessionResult>? SessionEnded;
-    public IReadOnlyList<Choice<int>> Durations { get; } = [new("30 分钟", 30), new("1 小时", 60), new("2 小时", 120), new("8 小时", 480), new("直到手动停止", -1), new("自定义…", 0)];
-    public IReadOnlyList<Choice<ScreenMode>> Screens { get; } = [new("允许熄屏", ScreenMode.Automatic), new("屏幕常亮", ScreenMode.AlwaysOn), new("调暗常亮", ScreenMode.NightDim)];
+    public IReadOnlyList<Choice<int>> Durations { get; } = [new("30 分钟", 30), new("1 小时", 60), new("2 小时", 120), new("8 小时", 480), new("不限时", -1), new("自定义…", 0)];
+    public IReadOnlyList<Choice<ScreenMode>> Screens { get; } = [new("自动关闭", ScreenMode.Automatic), new("常亮", ScreenMode.AlwaysOn), new("调暗", ScreenMode.NightDim)];
     public ICommand ToggleCommand { get; }
     public ICommand ExtendCommand { get; }
     public ICommand RecoverCommand { get; }
-    public ICommand OnboardCommand { get; }
     public ICommand DailyCommand { get; }
     public ICommand NightCommand { get; }
     public ICommand LidCommand { get; }
@@ -61,17 +61,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         backend = powerBackend; readSample = sampleReader; readClock = clockReader;
         store = preferenceStore; this.observeSystem = observeSystem;
         (preferences, onboarded, string? notice) = store.Load();
-        message = notice ?? "未开启";
+        message = notice ?? "";
         var (result, resultNotice) = store.LoadResult();
-        lastResult = result?.Text;
+        lastResult = result;
         historyNotice = resultNotice;
         customMinutesText = preferences.CustomMinutes.ToString(CultureInfo.InvariantCulture);
         minimumBatteryText = preferences.MinimumBattery.ToString(CultureInfo.InvariantCulture);
         session = new SessionController(backend, WindowsMonitor.Capabilities);
-        ToggleCommand = new RelayCommand(Toggle, () => HasOnboarded && !NeedsRecovery);
+        ToggleCommand = new RelayCommand(Toggle, () => !NeedsRecovery);
         ExtendCommand = new RelayCommand(Extend, () => session.CanExtend);
         RecoverCommand = new RelayCommand(() => TryStop(), () => NeedsRecovery);
-        OnboardCommand = new RelayCommand(() => { onboarded = true; Save(); Raise(nameof(HasOnboarded)); Raise(nameof(ShowWelcome)); Refresh(); });
         DailyCommand = new RelayCommand(() => Choose(Scene.Daily), () => CanEdit);
         NightCommand = new RelayCommand(() => Choose(Scene.Night), () => CanEdit);
         LidCommand = new RelayCommand(() => Choose(Scene.PluggedLid), () => CanEdit);
@@ -94,43 +93,57 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
 
     public bool HasOnboarded => onboarded;
-    public bool ShowWelcome => !onboarded;
     public bool IsActive => session.IsActive;
     public bool NeedsRecovery => session.NeedsRecovery;
     public bool CanEdit => !IsActive && !NeedsRecovery;
     public bool IsFiniteActive => IsActive && session.RemainingSeconds is not null;
-    public string PhaseText => NeedsRecovery ? "需要恢复" : IsActive ? "保持唤醒中" : "未开启";
-    public string ActionText => IsActive ? "停止" : "开始保持唤醒";
+    public bool ShowConfiguration => !IsActive && !NeedsRecovery;
+    public bool HasMessage => message.Length > 0;
+    public bool IsBlocked => !IsActive && !NeedsRecovery && BlockedReason.Length > 0;
+    public string BlockedReason => LidMode ? "合盖尚未开放" : !RequireAC ? "电池使用尚未开放"
+        : sample.OnAC is null ? "电源状态未知" : sample.OnAC == false ? "请接通电源"
+        : RequireNetwork && sample.NetworkAvailable is null ? "网络状态未知"
+        : RequireNetwork && sample.NetworkAvailable == false ? "网络未连接" : "";
+    public string PhaseText => NeedsRecovery ? "需要处理" : IsActive ? session.RemainingSeconds is null ? "已运行" : "剩余" : "未开启";
+    public string ActionText => IsActive ? "停止" : "开始";
     public string Message => message;
     public string VersionText => "Windows 开发预览 · " + typeof(MainViewModel).Assembly.GetName().Version?.ToString(3);
     public string HistoryNotice => historyNotice ?? "";
-    public string RemainingText => IsActive ? session.RemainingSeconds is null ? "直到手动停止" : FormatRemaining(session.RemainingSeconds.Value)
-        : NeedsRecovery ? "等待恢复" : preferences.LidMode ? "合盖尚未开放" : !preferences.RequireAC ? "电池尚未开放" : sample.OnAC != true ? "请接通电源" : "可以开始";
-    public string SceneStatusText
+    public string RemainingText => IsActive ? FormatRemaining(session.RemainingSeconds ?? Math.Max(0, readClock().Continuous - startedContinuous))
+        : NeedsRecovery ? "睡眠设置未恢复" : IsBlocked ? BlockedReason : "未开启";
+    public bool HasHeadlineNumbers => !NeedsRecovery && !IsBlocked && (IsActive || DurationMinutes != -1);
+    public string HeadlineText => NeedsRecovery ? "睡眠设置未恢复" : IsBlocked ? BlockedReason : "不限时";
+    public IReadOnlyList<SessionText.NumberPart> NumberParts => SessionText.Parts(IsActive
+        ? session.RemainingSeconds ?? Math.Max(0, readClock().Continuous - startedContinuous)
+        : (DurationMinutes == 0 ? preferences.CustomMinutes : Math.Max(0, DurationMinutes)) * 60, IsActive);
+    public string HeroHint => IsActive ? "可以锁屏，请勿合盖" : IsBlocked || NeedsRecovery ? "" : RequireNetwork ? "需开盖，断网即停" : "需开盖，仅接电";
+    public string SceneName => SessionText.SceneName(preferences.Scene);
+    public bool IsCustomized
     {
         get
         {
             var preset = Preferences.ForScene(preferences.Scene);
-            bool custom = DurationMinutes != preset.DurationMinutes || ScreenMode != preset.ScreenMode || LidMode != preset.LidMode || RequireAC != preset.RequireAC || RequireNetwork != preset.RequireNetwork;
-            return SessionText.SceneName(preferences.Scene) + (custom ? " · 已自定义" : "") + (IsActive ? " · 保持唤醒中" : "");
+            return DurationMinutes != preset.DurationMinutes || ScreenMode != preset.ScreenMode || LidMode != preset.LidMode || RequireAC != preset.RequireAC || RequireNetwork != preset.RequireNetwork;
         }
     }
-    // Same order as the Mac summary: duration · lid · power · network · screen.
-    public string ConfigurationText => (DurationMinutes == -1 ? "直到手动停止" : DurationMinutes > 0 ? SessionText.Duration(DurationMinutes * 60)
-            : int.TryParse(customMinutesText, out int custom) && custom is >= 1 and <= 1440 ? SessionText.Duration(custom * 60) : customMinutesText + " 分钟")
-        + " · " + (LidMode ? "请求合盖" : "需开盖") + " · " + (RequireAC ? "仅接电" : "可用电池") + (RequireNetwork ? " · 断网停止" : "")
-        + " · " + Screens.First(choice => choice.Value == ScreenMode).Label;
+    public string SceneStatusText => SceneName + (IsCustomized ? " · 已调整" : "");
+    public string ScreenText => Screens.First(choice => choice.Value == ScreenMode).Label + (IsNightDim ? $" {Math.Round(DimAmount * 100)}%" : "");
+    public string StartedText => startedAt is { } start ? SessionText.Clock(start.LocalDateTime) : "";
+    public string PowerRuleText => RequireAC ? "仅接电" : $"可用电池，下限 {preferences.MinimumBattery}%";
     public string EndText => IsActive && endsAt is { } end ? SessionText.EndTime(end.LocalDateTime, readClock().Wall.LocalDateTime) : "";
-    public string LastResultText => lastResult ?? "";
+    public string LastResultText => lastResult?.Text ?? "";
+    public string LastResultSummary => lastResult is { } result ? "上次结束 " + SessionText.EndedAt(result.End.LocalDateTime, readClock().Wall.LocalDateTime) + " " + result.Reason : "";
     public bool ShowLastResult => !IsActive && !NeedsRecovery && lastResult is not null;
     public bool IsDailyScene => preferences.Scene == Scene.Daily;
     public bool IsNightScene => preferences.Scene == Scene.Night;
     public bool IsLidScene => preferences.Scene == Scene.PluggedLid;
     public bool IsNetworkScene => preferences.Scene == Scene.Network;
     public double Progress => IsActive ? totalSeconds == 0 ? 1 : Math.Clamp((session.RemainingSeconds ?? 0) / totalSeconds, 0, 1) : 0;
-    public string TelemetryText => (sample.OnAC is null ? "电源未知" : sample.OnAC.Value ? "已接电" : "使用电池") + " · " + (sample.BatteryPercent is null ? "电量未知 / 无电池" : sample.BatteryPercent + "%") + "    " + (sample.NetworkAvailable is null ? "网络未知" : sample.NetworkAvailable.Value ? "网络已连接" : "网络未连接");
-    public string CapabilityText => preferences.LidMode ? "合盖尚未开放：系统设置恢复与机型验证待完成。请保持开盖，或选择日常 / 夜间。" : !preferences.RequireAC ? "使用电池尚未开放：Modern Standby 行为待验证。请勾选“仅在接通电源时运行”。" : "当前支持：接电、开盖时保持唤醒。允许熄屏时，屏幕仍按系统设置关闭。";
-    public string TrayText => IsActive ? "KeepMyMacAwake · " + (ShowCountdown ? RemainingText : "保持唤醒中") : "KeepMyMacAwake · " + PhaseText;
+    public string PowerText => (sample.OnAC is null ? "电源未知" : sample.OnAC.Value ? "已接电" : "使用电池") + (sample.BatteryPercent is { } percent ? $" {percent}%" : " 电量未知");
+    public string NetworkText => sample.NetworkAvailable is null ? "网络未知" : sample.NetworkAvailable.Value ? "网络已连接" : "网络未连接";
+    public bool PowerWarning => sample.OnAC != true;
+    public bool NetworkWarning => sample.NetworkAvailable is null || (RequireNetwork && sample.NetworkAvailable == false);
+    public string TrayText => IsActive ? "KeepMyMacAwake · " + (ShowCountdown ? PhaseText + " " + RemainingText : "保持唤醒中") : "KeepMyMacAwake · " + PhaseText;
     public int DurationMinutes { get => preferences.DurationMinutes; set { if (!CanEdit || value == preferences.DurationMinutes) return; Update(preferences with { DurationMinutes = value }); Raise(nameof(DurationMinutes)); Raise(nameof(IsCustomDuration)); } }
     public bool IsCustomDuration => DurationMinutes == 0;
     public string CustomMinutesText
@@ -144,7 +157,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         set { if (!CanEdit) return; minimumBatteryText = value; if (int.TryParse(value, out int percent) && percent is >= 10 and <= 80) Update(preferences with { MinimumBattery = percent }); Raise(nameof(MinimumBatteryText)); }
     }
     public ScreenMode ScreenMode { get => preferences.ScreenMode; set { if (!CanEdit || value == preferences.ScreenMode) return; Update(preferences with { ScreenMode = value }); Raise(nameof(ScreenMode)); Raise(nameof(IsNightDim)); } }
-    public bool IsNightDim => ScreenMode == ScreenMode.NightDim;
+    public bool IsAutomaticScreen { get => ScreenMode == ScreenMode.Automatic; set { if (value) ScreenMode = ScreenMode.Automatic; } }
+    public bool IsAlwaysOnScreen { get => ScreenMode == ScreenMode.AlwaysOn; set { if (value) ScreenMode = ScreenMode.AlwaysOn; } }
+    public bool IsNightDim { get => ScreenMode == ScreenMode.NightDim; set { if (value) ScreenMode = ScreenMode.NightDim; } }
     public double DimAmount { get => preferences.DimAmount; set { if (!CanEdit || value == preferences.DimAmount) return; Update(preferences with { DimAmount = value }); Raise(nameof(DimAmount)); Raise(nameof(DimText)); } }
     public string DimText => "调暗 " + Math.Round(DimAmount * 100) + "%";
     public bool LidMode { get => preferences.LidMode; set { if (!CanEdit || value == preferences.LidMode) return; Update(preferences with { LidMode = value }); Raise(nameof(LidMode)); } }
@@ -165,7 +180,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         set
         {
             if (value == loginEnabled) return;
-            try { LoginStartup.Set(value); loginEnabled = value; message = value ? "登录时启动，不会自动开始" : "已关闭登录启动"; }
+            try { LoginStartup.Set(value); loginEnabled = value; message = ""; }
             catch (Exception error) { message = "登录启动设置失败：" + error.Message; }
             Raise(nameof(LoginEnabled)); Refresh();
         }
@@ -178,7 +193,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         preferences = next;
         customMinutesText = next.CustomMinutes.ToString(CultureInfo.InvariantCulture);
         minimumBatteryText = next.MinimumBattery.ToString(CultureInfo.InvariantCulture);
-        message = next.LidMode ? "此场景需要合盖运行，当前预览尚未开放。" : "未开启";
+        message = "";
         foreach (string name in new[] { nameof(DurationMinutes), nameof(CustomMinutesText), nameof(MinimumBatteryText), nameof(IsCustomDuration), nameof(ScreenMode), nameof(IsNightDim), nameof(DimAmount), nameof(DimText), nameof(LidMode), nameof(RequireAC), nameof(RequireNetwork) }) Raise(name);
         Save(); Refresh();
     }
@@ -204,8 +219,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
                 catch (Exception stopError) { throw new AggregateException("调暗遮罩启动失败，睡眠阻止也未能取消", dimError, stopError); }
                 throw new InvalidOperationException("调暗遮罩启动失败：" + dimError.Message, dimError);
             }
-            startedAt = now.Wall; endsAt = duration == 0 ? null : now.Wall.AddMinutes(duration);
-            message = "可以锁屏离开 · 请保持开盖";
+            startedAt = now.Wall; startedContinuous = now.Continuous;
+            endsAt = duration == 0 ? null : now.Wall.AddMinutes(duration);
+            message = "";
+            if (!onboarded) { onboarded = true; Save(); Raise(nameof(HasOnboarded)); }
         }
         catch (Exception error)
         {
@@ -217,13 +234,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void Extend()
     {
-        try { session.Extend(readSample(), readClock()); totalSeconds += 900; endsAt = endsAt?.AddSeconds(900); message = "已延长 15 分钟"; }
+        try { session.Extend(readSample(), readClock()); totalSeconds += 900; endsAt = endsAt?.AddSeconds(900); message = ""; }
         catch (Exception error) { message = !IsActive && session.LastStopReason is { } reason ? Explain(reason) : error.Message; if (NeedsRecovery) message += "；待恢复：" + session.Error; }
         if (!IsActive) { dimmer.Stop(); RecordEnd(Explain(session.LastStopReason ?? StopReason.Manual)); }
         Refresh();
     }
 
-    public bool TryStop(string reason = "已手动停止")
+    public bool TryStop(string reason = "手动停止")
     {
         bool wasActive = IsActive;
         Exception? dimError = null;
@@ -232,7 +249,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             session.Stop();
             if (wasActive) RecordEnd(reason);
-            message = dimError is null ? "已停止，本应用不再阻止睡眠" : "已取消睡眠阻止，但调暗遮罩撤销失败：" + dimError.Message;
+            message = dimError is null ? "" : "已取消睡眠阻止，但调暗遮罩撤销失败：" + dimError.Message;
             Refresh(); return dimError is null;
         }
         catch (Exception error) { if (wasActive) RecordEnd(reason + "；未能取消睡眠阻止，需要恢复"); message = "未能取消睡眠阻止：" + error.Message; Refresh(); return false; }
@@ -250,7 +267,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         }
         if (wasActive && !IsActive)
         {
-            dimmer.Stop(); message = session.Error ?? Explain(session.LastStopReason ?? StopReason.Manual);
+            dimmer.Stop(); message = session.Error ?? "";
             RecordEnd(Explain(session.LastStopReason ?? StopReason.Manual));
         }
         Refresh();
@@ -293,7 +310,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             var end = readClock().Wall;
             var result = new SessionResult(start, end < start ? start : end, reason + (NeedsRecovery && !reason.Contains("需要恢复", StringComparison.Ordinal) ? "；未能取消睡眠阻止，需要恢复" : ""));
-            lastResult = result.Text;
+            lastResult = result;
             try { store.SaveResult(result); historyNotice = null; }
             catch (Exception error) { historyNotice = "上次结果保存失败：" + error.Message; }
             if (NotifyOnEnd) SessionEnded?.Invoke(result);
@@ -304,7 +321,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private void Update(Preferences next)
     {
         if (!next.IsValid) return;
-        preferences = next; Save(); Refresh();
+        preferences = next; message = ""; Save(); Refresh();
     }
     private void Save()
     {
@@ -321,10 +338,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         Publish(nameof(IsActive), IsActive); Publish(nameof(NeedsRecovery), NeedsRecovery); Publish(nameof(CanEdit), CanEdit);
         Publish(nameof(IsFiniteActive), IsFiniteActive); Publish(nameof(PhaseText), PhaseText); Publish(nameof(ActionText), ActionText);
-        Publish(nameof(Message), Message); Publish(nameof(RemainingText), RemainingText); Publish(nameof(SceneStatusText), SceneStatusText); Publish(nameof(ConfigurationText), ConfigurationText);
-        Publish(nameof(Progress), Progress); Publish(nameof(TelemetryText), TelemetryText); Publish(nameof(CapabilityText), CapabilityText); Publish(nameof(TrayText), TrayText);
+        Publish(nameof(Message), Message); Publish(nameof(RemainingText), RemainingText); Publish(nameof(SceneStatusText), SceneStatusText);
+        Publish(nameof(Progress), Progress); Publish(nameof(TrayText), TrayText);
         Publish(nameof(EndText), EndText); Publish(nameof(LastResultText), LastResultText); Publish(nameof(ShowLastResult), ShowLastResult);
         Publish(nameof(HistoryNotice), HistoryNotice);
+        Publish(nameof(ShowConfiguration), ShowConfiguration); Publish(nameof(HasMessage), HasMessage);
+        Publish(nameof(IsBlocked), IsBlocked); Publish(nameof(HasHeadlineNumbers), HasHeadlineNumbers); Publish(nameof(HeadlineText), HeadlineText);
+        Publish(nameof(NumberParts), string.Join("|", NumberParts.Select(part => part.Value + part.Unit)));
+        Publish(nameof(HeroHint), HeroHint); Publish(nameof(SceneName), SceneName); Publish(nameof(IsCustomized), IsCustomized);
+        Publish(nameof(ScreenText), ScreenText); Publish(nameof(StartedText), StartedText); Publish(nameof(PowerRuleText), PowerRuleText);
+        Publish(nameof(LastResultSummary), LastResultSummary); Publish(nameof(PowerText), PowerText); Publish(nameof(NetworkText), NetworkText);
+        Publish(nameof(PowerWarning), PowerWarning); Publish(nameof(NetworkWarning), NetworkWarning);
+        Publish(nameof(IsAutomaticScreen), IsAutomaticScreen); Publish(nameof(IsAlwaysOnScreen), IsAlwaysOnScreen);
         Publish(nameof(IsDailyScene), IsDailyScene); Publish(nameof(IsNightScene), IsNightScene); Publish(nameof(IsLidScene), IsLidScene); Publish(nameof(IsNetworkScene), IsNetworkScene);
         ((RelayCommand)ToggleCommand).Refresh(); ((RelayCommand)ExtendCommand).Refresh(); ((RelayCommand)RecoverCommand).Refresh();
         foreach (ICommand command in new[] { DailyCommand, NightCommand, LidCommand, NetworkCommand }) ((RelayCommand)command).Refresh();
@@ -336,9 +361,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     private static string Explain(StopReason reason) => reason switch
     {
-        StopReason.Manual => "已手动停止", StopReason.Expired => "设定时间已到", StopReason.PowerDisconnected => "电源已断开，请接电后重新开始",
-        StopReason.LowBattery => "电量降到设定下限", StopReason.NetworkDisconnected => "网络已断开，请联网后重新开始",
-        StopReason.TelemetryUnknown => "无法读取电源或散热状态", StopReason.ClockChanged => "系统时间发生明显变化",
+        StopReason.Manual => "手动停止", StopReason.Expired => "时间到", StopReason.PowerDisconnected => "电源已断开",
+        StopReason.LowBattery => "电量达到下限", StopReason.NetworkDisconnected => "网络已断开",
+        StopReason.TelemetryUnknown => "无法读取电源、网络或电量状态", StopReason.ClockChanged => "系统时间发生明显变化",
         StopReason.ThermalCritical => "散热状态严重", StopReason.ThermalSerious => "散热状态持续较高",
         StopReason.Disconnected => "系统睡眠或会话已断开", _ => "会话已结束：" + reason
     };
